@@ -1,0 +1,56 @@
+{
+  "project_info": {
+    "project_number": "675693172763",
+    "firebase_url": "https://musify-7534c-default-rtdb.firebaseio.com",
+    "project_id": "musify-7534c",
+    "storage_bucket": "musify-7534c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:675693172763:android:36372abf5844ce78c200be",
+        "android_client_info": {
+          "package_name": "com.example.musify"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "675693172763-chss1q8bob0ttqrpkl0ft7pb52tfdc8r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.musify",
+            "certificate_hash": "887cb52834021ddcce77bb39e5c0fa03d0fab8ce"
+          }
+        },
+        {
+          "client_id": "675693172763-jp0lt6a1n89opebt4p5l7ti3i5qlqqme.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.musify",
+            "certificate_hash": "f5f7f08ae1867ea46232ce3ba8f47555343cbf7d"
+          }
+        },
+        {
+          "client_id": "675693172763-7478p6fjg3g3dkb84clhfnoc7ouvv5q0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBz3hMYZI9Y59bZ-Qq7xdY13PNR-ZcQgDI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "675693172763-7478p6fjg3g3dkb84clhfnoc7ouvv5q0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

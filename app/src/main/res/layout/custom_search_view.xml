@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:background="@drawable/search_view_shape"
+    android:orientation="horizontal"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    >
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="16dp"
+        android:layout_gravity="center_vertical"
+        app:tint="#707B81"
+        app:srcCompat="@drawable/search_outline"/>
+
+    <EditText
+        android:id="@+id/editText"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:layout_marginStart="12dp"
+        android:layout_gravity="center_vertical"
+        android:background="@android:color/transparent"
+        android:hint="Search Here"
+        android:textColorHint="#707B81"
+        android:imeOptions="actionSearch"
+        android:inputType="text"
+        android:textCursorDrawable="@drawable/custom_cursor"
+        android:textColor="#F8F9FA"
+        android:textSize="16sp"
+        android:fontFamily="sans-serif"/>
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/clearText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:srcCompat="@drawable/clear"
+        app:tint="#707B81"
+        android:layout_gravity="center_vertical"
+        android:layout_marginEnd="16dp"
+        android:visibility="gone"/>
+</LinearLayout>

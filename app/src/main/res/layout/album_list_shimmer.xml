@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="12dp"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="#121212">
+
+    <TextView
+        android:id="@+id/textView4"
+        android:layout_width="110dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/shimmer_background"
+        android:layout_marginTop="10dp"
+        app:layout_constraintStart_toStartOf="@id/materialCardView"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/materialCardView"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:elevation="2dp"
+        app:cardElevation="0dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="25dp"
+        app:cardUseCompatPadding="false"
+        app:strokeWidth="0dp"
+        android:background="@android:color/transparent"
+        app:cardCornerRadius="16dp"
+        app:layout_constraintEnd_toStartOf="@id/materialCardView1"
+        app:layout_constraintTop_toBottomOf="@id/textView4">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/backgroundImageView0"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#808080"
+            android:scaleType="centerCrop" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <TextView
+        android:id="@+id/songNameText0"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
+        android:background="@drawable/shimmer_background"
+        app:layout_constraintEnd_toEndOf="@+id/materialCardView"
+        app:layout_constraintStart_toStartOf="@+id/materialCardView"
+        app:layout_constraintTop_toBottomOf="@+id/materialCardView" />
+
+    <TextView
+        android:id="@+id/songArtistNameText0"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/shimmer_background"
+        app:layout_constraintStart_toStartOf="@+id/songNameText0"
+        app:layout_constraintTop_toBottomOf="@+id/songNameText0" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/materialCardView1"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:elevation="2dp"
+        app:cardElevation="0dp"
+        app:cardUseCompatPadding="false"
+        app:strokeWidth="0dp"
+        android:background="@android:color/transparent"
+        app:cardCornerRadius="16dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textView4">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/backgroundImageView1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#808080"
+            android:scaleType="centerCrop" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <TextView
+        android:id="@+id/songNameText1"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
+        android:background="@drawable/shimmer_background"
+        app:layout_constraintEnd_toEndOf="@+id/materialCardView1"
+        app:layout_constraintStart_toStartOf="@+id/materialCardView1"
+        app:layout_constraintTop_toBottomOf="@+id/materialCardView1" />
+
+    <TextView
+        android:id="@+id/songArtistNameText1"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/shimmer_background"
+        app:layout_constraintStart_toStartOf="@+id/songNameText1"
+        app:layout_constraintTop_toBottomOf="@+id/songNameText1" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/materialCardView2"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:elevation="2dp"
+        app:cardElevation="0dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="25dp"
+        app:cardUseCompatPadding="false"
+        app:strokeWidth="0dp"
+        android:background="@android:color/transparent"
+        app:cardCornerRadius="16dp"
+        app:layout_constraintStart_toEndOf="@id/materialCardView1"
+        app:layout_constraintTop_toBottomOf="@id/textView4">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/backgroundImageView2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#808080"
+            android:scaleType="centerCrop" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <TextView
+        android:id="@+id/songNameText2"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
+        android:background="@drawable/shimmer_background"
+        app:layout_constraintEnd_toEndOf="@+id/materialCardView2"
+        app:layout_constraintStart_toStartOf="@+id/materialCardView2"
+        app:layout_constraintTop_toBottomOf="@+id/materialCardView2" />
+
+    <TextView
+        android:id="@+id/songArtistNameText2"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/shimmer_background"
+        app:layout_constraintStart_toStartOf="@+id/songNameText2"
+        app:layout_constraintTop_toBottomOf="@+id/songNameText2" />
+</androidx.constraintlayout.widget.ConstraintLayout>

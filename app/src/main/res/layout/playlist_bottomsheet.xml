@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingBottom="22dp"
+    android:background="@drawable/bottom_sheet_bg">
+
+    <View
+        android:id="@+id/drag_handle"
+        android:layout_width="76dp"
+        android:layout_height="4dp"
+        android:layout_marginTop="15dp"
+        android:background="@drawable/drag_handle_bg"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+        android:fontFamily="@font/merriweathersans_semibold"
+        android:text="PlayList Name"
+        android:textColor="#F8F9FA"
+        android:textSize="16sp"
+        app:layout_constraintStart_toStartOf="@+id/playlistEditText"
+        app:layout_constraintTop_toBottomOf="@id/drag_handle" />
+
+    <androidx.appcompat.widget.AppCompatEditText
+        android:id="@+id/playlistEditText"
+        android:layout_width="match_parent"
+        android:layout_height="58dp"
+        android:layout_marginTop="18dp"
+        android:inputType="textEmailAddress"
+        android:textColor="#707B81"
+        android:textSize="16sp"
+        android:paddingHorizontal="15dp"
+        android:layout_marginHorizontal="28dp"
+        android:textCursorDrawable="@drawable/custom_cursor"
+        android:background="@drawable/txtinputlayout_bg"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/createPlaylistBtn"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="22dp"
+        app:backgroundTint="#34A853"
+        android:layout_marginHorizontal="32dp"
+        android:background="@drawable/txtinputlayout_bg"
+        android:gravity="center_vertical|center_horizontal"
+        android:fontFamily="@font/merriweathersans_regular"
+        android:text="Create  Playlist"
+        android:textSize="14sp"
+        android:textColor="#F8F9FA"
+        app:layout_constraintEnd_toEndOf="@+id/playlistEditText"
+        app:layout_constraintStart_toStartOf="@+id/playlistEditText"
+        app:layout_constraintTop_toBottomOf="@+id/playlistEditText" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
