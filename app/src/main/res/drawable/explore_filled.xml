@@ -1,13 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="28dp"
-    android:height="28dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
+    android:width="26dp"
+    android:height="26dp"
+    android:viewportWidth="41.85"
+    android:viewportHeight="41.85">
 
-    <!-- Outer circle and inner shape -->
+    <!-- Outer circle with inner diamond cutout -->
     <path
-        android:fillColor="#F8F9FA"
-        android:pathData="M12 2C6.49 2 2 6.49 2 12C2 17.51 6.49 22 12 22C17.51 22 22 17.51 22 12C22 6.49 17.51 2 12 2ZM10.5 16.13C9.05 16.13 7.88 14.95 7.88 13.51C7.88 10.41 10.4 7.89 13.5 7.89C14.95 7.89 16.12 9.07 16.12 10.51C16.12 13.6 13.6 16.13 10.5 16.13Z"/>
+        android:fillColor="#010002"
+        android:fillType="evenOdd"
+        android:pathData="
+            M20.926,41.848
+            C32.481,41.848 41.85,32.48 41.85,20.924
+            C41.85,9.369 32.481,0 20.926,0
+            C9.369,0 0,9.369 0,20.924
+            C0,32.48 9.369,41.848 20.926,41.848
+            Z
 
+            M30.914,30.913
+            c0,0-1.326-9.307-6-13.979
+            c-4.672-4.672-13.979-6-13.979-6
+            s1.326,9.308,5.996,13.981
+            C21.605,29.587,30.914,30.913,30.914,30.913
+            z
+            M19.301,19.301
+            c0.896-0.896,2.35-0.896,3.246,0
+            c0.896,0.897,0.896,2.349,0,3.246
+            c-0.895,0.897-2.35,0.898-3.246,0
+            C18.404,21.65,18.406,20.197,19.301,19.301
+            z"/>
 </vector>
+
+
