@@ -60,6 +60,18 @@
                     app:layout_constraintTop_toTopOf="parent"
                     app:srcCompat="@drawable/arrow_icon" />
 
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/plusIcon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:padding="15dp"
+                    android:layout_marginEnd="20dp"
+                    app:layout_constraintBottom_toBottomOf="@+id/downArrow"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="@+id/downArrow"
+                    app:srcCompat="@drawable/plus"
+                    app:tint="#F8F9FA" />
+
                 <androidx.cardview.widget.CardView
                     android:id="@+id/cardView"
                     android:layout_width="match_parent"

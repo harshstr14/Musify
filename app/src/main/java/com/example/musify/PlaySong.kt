@@ -1,5 +1,6 @@
 package com.example.musify
 
+import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
@@ -12,17 +13,23 @@ import android.os.Bundle
 import android.os.IBinder
 import android.text.Html
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
 import android.view.animation.AnimationUtils
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.cardview.widget.CardView
+import androidx.core.app.ActivityOptionsCompat
 import androidx.core.graphics.toColorInt
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -41,18 +48,15 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.MutableData
 import com.google.firebase.database.ValueEventListener
 import com.squareup.picasso.Picasso
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.util.Locale
-import androidx.activity.addCallback
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.updateLayoutParams
+import com.google.firebase.database.Transaction
+import com.google.firebase.database.GenericTypeIndicator
 
 class PlaySong : AppCompatActivity() {
     private lateinit var binding: ActivityPlaySongBinding
@@ -122,7 +126,7 @@ class PlaySong : AppCompatActivity() {
 
         binding.downArrow.setOnClickListener {
             finish()
-            overridePendingTransition(0,R.anim.slide_out_bottom)
+            overridePendingTransition(0, R.anim.slide_out_bottom)
         }
 
         onBackPressedDispatcher.addCallback(this) {
@@ -284,6 +288,99 @@ class PlaySong : AppCompatActivity() {
                     startActivity(intent)
                 }
             })
+
+            binding.plusIcon.setOnClickListener {
+                val dialogView = LayoutInflater.from(this).inflate(R.layout.playlist_dialog,null)
+                val dialog = AlertDialog.Builder(this)
+                    .setView(dialogView)
+                    .create()
+
+                val userID = auth.currentUser?.uid
+                val playListRef = database.child(userID.toString()).child("Favourites").child("MyPlaylist")
+                val playlistList = mutableListOf<PlaylistData>()
+
+                val adapter = PlaylistNameAdapter(playlistList,
+                    onPlusIconClick = { position ->
+                        val playlistName = playlistList[position].name
+                        val playlistRef = playListRef.child(playlistName)
+
+                        playlistRef.runTransaction(object : Transaction.Handler {
+                            override fun doTransaction(currentData: MutableData): Transaction.Result {
+                                // Get current playlist map safely
+                                val playlist = (currentData.getValue(object : GenericTypeIndicator<Map<String, Any>>() {}) ?: emptyMap()).toMutableMap()
+
+                                // Get existing Songs (may be null initially)
+                                val songs = (playlist["Songs"] as? Map<String, Any?>)?.toMutableMap() ?: mutableMapOf()
+
+                                // ✅ If song already exists, don't commit changes
+                                if (songs.containsKey(song.id)) {
+                                    // No need to modify currentData → Transaction will treat it as no change
+                                    return Transaction.abort()
+                                }
+
+                                // ✅ Add new song data
+                                songs[song.id] = mapOf(
+                                    "id" to song.id,
+                                    "name" to song.name
+                                )
+
+                                // ✅ Safely increment totalSongs (handle missing or wrong type)
+                                val totalSongs = (playlist["total Songs"] as? Number)?.toLong() ?: 0L
+                                playlist["total Songs"] = totalSongs + 1
+
+                                // ✅ Apply updates
+                                playlist["Songs"] = songs
+                                currentData.value = playlist
+
+                                return Transaction.success(currentData)
+                            }
+
+                            override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
+                                when {
+                                    error != null -> {
+                                        Toast.makeText(this@PlaySong, "Error: ${error.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                    !committed -> {
+                                        Toast.makeText(this@PlaySong, "Song already exists in $playlistName", Toast.LENGTH_SHORT).show()
+                                    }
+                                    else -> {
+                                        Toast.makeText(this@PlaySong, "Added to $playlistName", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        })
+                    }
+                )
+                val recyclerView = dialogView.findViewById<RecyclerView>(R.id.playListNameRecyclerView)
+                recyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
+                recyclerView.adapter = adapter
+
+                playListRef.get().addOnSuccessListener { snapshot ->
+                    if (snapshot.exists()) {
+                        playlistList.clear()
+                        for (playListSnapShot in snapshot.children) {
+                            val name = playListSnapShot.child("playList Name").getValue(String::class.java) ?: ""
+                            val totalSongs = playListSnapShot.child("total Songs").getValue(Int::class.java) ?: 0
+                            playlistList.add(PlaylistData(name, totalSongs))
+                        }
+                        adapter.notifyDataSetChanged()
+                    } else {
+                        if (playlistList.isEmpty()) {
+                            val text = dialogView.findViewById<TextView>(R.id.noPlaylistText)
+                            text.visibility = View.VISIBLE
+                        }
+                    }
+                }.addOnFailureListener {
+                    Toast.makeText(this, "Failed to load playlists", Toast.LENGTH_SHORT).show()
+                    if (playlistList.isEmpty()) {
+                        val text = dialogView.findViewById<TextView>(R.id.noPlaylistText)
+                        text.visibility = View.VISIBLE
+                    }
+                }
+
+                dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+                dialog.show()
+            }
         }
     }
     fun fetchAlbumByID(albumID: String) {

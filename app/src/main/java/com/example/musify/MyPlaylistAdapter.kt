@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 class MyPlaylistAdapter (private val playlistList: MutableList<PlaylistData>,
                          private val onRenameClick: (PlaylistData) -> Unit,
                          private val onRemoveClick: (PlaylistData) -> Unit)
-    : RecyclerView.Adapter<MyPlaylistAdapter.ViewHolder>(){
+    : RecyclerView.Adapter<MyPlaylistAdapter.ViewHolder>() {
 
     private lateinit var myListener: OnItemClickListener
 

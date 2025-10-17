@@ -26,7 +26,6 @@ import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.MutableLiveData
 import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
@@ -34,7 +33,6 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.example.musify.databinding.ActivityMyPlaylistBinding
 import com.example.musify.service.MusicPlayerService
 import com.example.musify.songData.Image
-import com.google.android.play.core.integrity.an
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -63,7 +61,6 @@ class MyPlaylistActivity : AppCompatActivity() {
     private lateinit var backgroundView: CardView
     private val songList = ArrayList<SongItem>()
     private lateinit var songAdapter: SuggestionSongAdapter
-    val isShuffle = MutableLiveData(false)
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -240,8 +237,9 @@ class MyPlaylistActivity : AppCompatActivity() {
                     }
                 }
             } else {
+                binding.imageView.setImageResource(R.drawable.myplaylist)
                 val playListRef = database.child(userID).child("Favourites").child("MyPlaylist")
-                playListRef.child(name).get().addOnSuccessListener { snapshot ->
+                playListRef.child(name).child("Songs").get().addOnSuccessListener { snapshot ->
                     if (snapshot.exists()) {
                         val songIDList = ArrayList<String>()
                         for (songSnap in snapshot.children) {
@@ -297,7 +295,7 @@ class MyPlaylistActivity : AppCompatActivity() {
 
                     val totalSongs = songList.size
                     val totalDuration = songList.sumOf { it.duration }
-                    binding.totalSongText.text = "Songs : $totalSongs"
+                    "Songs : $totalSongs".also { binding.totalSongText.text = it }
                     binding.durationText.text = formatDuration(totalDuration)
 
                     val userID = auth.currentUser?.uid

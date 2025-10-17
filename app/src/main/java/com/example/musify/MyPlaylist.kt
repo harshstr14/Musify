@@ -422,27 +422,42 @@ class MyPlaylist : Fragment() {
             } else {
                 if (userID != null) {
                     val playListRef = database.child(userID).child("Favourites").child("MyPlaylist")
-                    playListRef.child(oldName).get().addOnSuccessListener { snapshot ->
-                        if (snapshot.exists()) {
-                            val totalSongs = snapshot.child("total Songs").getValue(Int::class.java) ?: 0
+                    val oldPlaylistRef = playListRef.child(oldName)
+                    val newPlaylistRef = playListRef.child(name)
 
-                            val data = mapOf(
+                    if (oldName != name) {
+                        oldPlaylistRef.get().addOnSuccessListener { snapshot ->
+                            if (!snapshot.exists()) {
+                                Toast.makeText(requireContext(), "Playlist does not exist", Toast.LENGTH_SHORT).show()
+                                return@addOnSuccessListener
+                            }
+
+                            val totalSongs = snapshot.child("total Songs").getValue(Int::class.java) ?: 0
+                            val songsData = snapshot.child("Songs").value
+
+                            val data = mutableMapOf<String, Any>(
                                 "playList Name" to name,
                                 "total Songs" to totalSongs
                             )
-                            playListRef.child(name).setValue(data).addOnSuccessListener {
-                                playListRef.child(oldName).removeValue()
-                                Toast.makeText(requireContext(),"Playlist Renamed Successfully",
-                                    Toast.LENGTH_SHORT).show()
-                                loadPlaylists()
+
+                            // Only include Songs if present
+                            songsData?.let { data["Songs"] = it }
+
+                            // Write new playlist first
+                            newPlaylistRef.setValue(data).addOnSuccessListener {
+                                // Copy complete — now safely remove the old one
+                                oldPlaylistRef.removeValue().addOnSuccessListener {
+                                    Toast.makeText(requireContext(), "Playlist renamed successfully", Toast.LENGTH_SHORT).show()
+                                    loadPlaylists()
+                                }.addOnFailureListener {
+                                    Toast.makeText(requireContext(), "Failed to delete old playlist", Toast.LENGTH_SHORT).show()
+                                }
                             }.addOnFailureListener {
-                                Toast.makeText(requireContext(),"Failed to Rename PlayList",
-                                    Toast.LENGTH_SHORT).show()
+                                Toast.makeText(requireContext(), "Failed to rename playlist", Toast.LENGTH_SHORT).show()
                             }
-                        } else {
-                            Toast.makeText(requireContext(),"PlayList Not Exist",
-                                Toast.LENGTH_SHORT).show()
                         }
+                    } else {
+                        Toast.makeText(requireContext(), "Playlist Already exist", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
