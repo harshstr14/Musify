@@ -21,6 +21,7 @@ import android.widget.TextView
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
@@ -280,9 +281,13 @@ class Home : Fragment() {
         recentPlayedAdapter.setOnItemClickListener(object : SongAdapter.OnItemClickListener {
             override fun omItemClick(position: Int) {
                 if (musicPlayerService != null) {
-                    musicPlayerService?.setPlaylist(recentPlayedList,position)
-                    val intent = Intent(requireContext(), MusicPlayerService::class.java)
-                    requireContext().startService(intent)
+                    val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
+                        action = MusicPlayerService.ACTION_PLAY_NEW
+                        putParcelableArrayListExtra("playlist", recentPlayedList)
+                        putExtra("index", position)
+                    }
+
+                    ContextCompat.startForegroundService(requireContext(), intent)
                 }
             }
         })
@@ -290,9 +295,13 @@ class Home : Fragment() {
         newSongAdapter.setOnItemClickListener(object : NewSongAdapter.OnItemClickListener {
             override fun omItemClick(position: Int) {
                 if (musicPlayerService != null) {
-                    musicPlayerService?.setPlaylist(newSongsList,position)
-                    val intent = Intent(requireContext(), MusicPlayerService::class.java)
-                    requireContext().startService(intent)
+                    val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
+                        action = MusicPlayerService.ACTION_PLAY_NEW
+                        putParcelableArrayListExtra("playlist", newSongsList)
+                        putExtra("index", position)
+                    }
+
+                    ContextCompat.startForegroundService(requireContext(), intent)
                 }
                 RecentlyPlayedManager.addToRecentlyPlayed(requireContext(),newSongsList[position])
             }
@@ -301,9 +310,13 @@ class Home : Fragment() {
         todayTrendingSongAdapter.setOnItemClickListener(object : SongAdapter.OnItemClickListener {
             override fun omItemClick(position: Int) {
                 if (musicPlayerService != null) {
-                    musicPlayerService?.setPlaylist(todayTrendingSongList,position)
-                    val intent = Intent(requireContext(), MusicPlayerService::class.java)
-                    requireContext().startService(intent)
+                    val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
+                        action = MusicPlayerService.ACTION_PLAY_NEW
+                        putParcelableArrayListExtra("playlist", todayTrendingSongList)
+                        putExtra("index", position)
+                    }
+
+                    ContextCompat.startForegroundService(requireContext(), intent)
                 }
                 RecentlyPlayedManager.addToRecentlyPlayed(requireContext(),todayTrendingSongList[position])
             }

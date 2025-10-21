@@ -6,4 +6,8 @@
 
     <color name="dialog_background">#1C1C1C</color>
     <color name="gray_light">#707B81</color>
+
+    <color name="status_bar_light">#FFFFFF</color>
+    <color name="status_bar_dark">#121212</color>
+
 </resources>

@@ -22,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -210,9 +211,13 @@ class MyPlaylistActivity : AppCompatActivity() {
         songAdapter.setOnItemClickListener(object : SuggestionSongAdapter.OnItemClickListener {
             override fun onItemClick(position: Int) {
                 musicPlayerService?.let {
-                    val intent = Intent(this@MyPlaylistActivity, MusicPlayerService::class.java)
-                    it.setPlaylist(songList, position)
-                    startService(intent)
+                    val intent = Intent(this@MyPlaylistActivity, MusicPlayerService::class.java).apply {
+                        action = MusicPlayerService.ACTION_PLAY_NEW
+                        putParcelableArrayListExtra("playlist", songList)
+                        putExtra("index", position)
+                    }
+
+                    ContextCompat.startForegroundService(this@MyPlaylistActivity, intent)
                 }
                 Home.RecentlyPlayedManager.addToRecentlyPlayed(this@MyPlaylistActivity, songList[position])
             }
@@ -324,18 +329,25 @@ class MyPlaylistActivity : AppCompatActivity() {
                     binding.playButtonIcon.setOnClickListener {
                         binding.playButtonIcon.startAnimation(anim)
                         if (musicPlayerService != null) {
-                            musicPlayerService?.setPlaylist(songList)
-                            val intent = Intent(this, MusicPlayerService::class.java)
-                            startService(intent)
+                            val intent = Intent(this, MusicPlayerService::class.java).apply {
+                                action = MusicPlayerService.ACTION_PLAY_NEW
+                                putParcelableArrayListExtra("playlist", songList)
+                            }
+
+                            ContextCompat.startForegroundService(this, intent)
                         }
                     }
 
                     binding.shuffleButton.setOnClickListener {
                         Toast.makeText(this,"Playing with Shuffle", Toast.LENGTH_SHORT).show()
                         if (musicPlayerService != null) {
-                            musicPlayerService?.setPlaylist(songList)
-                            val intent = Intent(this, MusicPlayerService::class.java)
-                            startService(intent)
+                            val intent = Intent(this, MusicPlayerService::class.java).apply {
+                                action = MusicPlayerService.ACTION_PLAY_NEW
+                                putParcelableArrayListExtra("playlist", songList)
+                            }
+
+                            ContextCompat.startForegroundService(this, intent)
+
                         }
                         binding.shuffleButton.startAnimation(anim)
                         musicPlayerService?.updateNotification()

@@ -22,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -383,9 +384,13 @@ class ArtistActivity : AppCompatActivity() {
             topSongsAdapter.setOnItemClickListener(object : SuggestionSongAdapter.OnItemClickListener {
                 override fun onItemClick(position: Int) {
                     if (musicPlayerService != null) {
-                        val intent = Intent(this@ArtistActivity, MusicPlayerService::class.java)
-                        startService(intent)
-                        musicPlayerService?.setPlaylist(topSongsList, position)
+                        val intent = Intent(this@ArtistActivity, MusicPlayerService::class.java).apply {
+                            action = MusicPlayerService.ACTION_PLAY_NEW
+                            putParcelableArrayListExtra("playlist", topSongsList)
+                            putExtra("index", position)
+                        }
+
+                        ContextCompat.startForegroundService(this@ArtistActivity, intent)
                     }
                     Home.RecentlyPlayedManager.addToRecentlyPlayed(this@ArtistActivity,topSongsList[position])
                 }

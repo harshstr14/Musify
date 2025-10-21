@@ -173,7 +173,6 @@ class MusicPlayerService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
-        // handle notification actions
 
         intent?.action?.let { action ->
             when (action) {
@@ -185,8 +184,14 @@ class MusicPlayerService : LifecycleService() {
                         intent.getParcelableArrayListExtra("playlist")
                     }
 
-                    val index = intent.getIntExtra("index",0)
-                    setPlaylist(playlist,index)
+                    val index = intent.getIntExtra("index", 0)
+                    if (!playlist.isNullOrEmpty() && index in playlist.indices) {
+                        setPlaylist(playlist, index)
+                        // Only start foreground if a song is available
+                        currentSongLive.value?.let { song ->
+                            startForegroundWithNotification(song)
+                        }
+                    }
                 }
                 ACTION_PLAY -> resume()
                 ACTION_PAUSE -> pause()
@@ -197,6 +202,17 @@ class MusicPlayerService : LifecycleService() {
                 ACTION_STOP -> stopServiceAndNotification()
             }
         }
+
+        // If the player is not initialized yet, start with a placeholder notification
+        if (!::player.isInitialized) {
+            val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Musify is running…")
+                .setContentText("Preparing your music")
+                .setSmallIcon(R.drawable.listener)
+                .build()
+            startForeground(NOTIFICATION_ID, notification)
+        }
+
         return START_STICKY
     }
     fun setPlaylist(songs: ArrayList<SongItem>?, startAtIndex: Int = 0) {
@@ -405,19 +421,19 @@ class MusicPlayerService : LifecycleService() {
         }
     }
     private fun buildNotification(song: SongItem, bitmap: Bitmap): Notification {
-        val playIntent = Intent(this, MusicPlayerService::class.java).setAction(ACTION_PLAY)
-        val pauseIntent = Intent(this, MusicPlayerService::class.java).setAction(ACTION_PAUSE)
-        val nextIntent = Intent(this, MusicPlayerService::class.java).setAction(ACTION_NEXT)
-        val prevIntent = Intent(this, MusicPlayerService::class.java).setAction(ACTION_PREV)
-        val shuffleIntent = Intent(this, MusicPlayerService::class.java).setAction(ACTION_SHUFFLE)
-        val repeatIntent = Intent(this, MusicPlayerService::class.java).setAction(ACTION_REPEAT)
+        val playIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_PLAY)
+        val pauseIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_PAUSE)
+        val nextIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_NEXT)
+        val prevIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_PREV)
+        val shuffleIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_SHUFFLE)
+        val repeatIntent = Intent(this, NotificationActionReceiver::class.java).setAction(ACTION_REPEAT)
 
-        val playPending    = PendingIntent.getService(this, 100, playIntent, PendingIntent.FLAG_IMMUTABLE)
-        val pausePending   = PendingIntent.getService(this, 101, pauseIntent, PendingIntent.FLAG_IMMUTABLE)
-        val nextPending    = PendingIntent.getService(this, 102, nextIntent, PendingIntent.FLAG_IMMUTABLE)
-        val prevPending    = PendingIntent.getService(this, 103, prevIntent, PendingIntent.FLAG_IMMUTABLE)
-        val shufflePending = PendingIntent.getService(this, 104, shuffleIntent, PendingIntent.FLAG_IMMUTABLE)
-        val repeatPending  = PendingIntent.getService(this, 105, repeatIntent, PendingIntent.FLAG_IMMUTABLE)
+        val playPending    = PendingIntent.getBroadcast(this, 100, playIntent, PendingIntent.FLAG_IMMUTABLE)
+        val pausePending   = PendingIntent.getBroadcast(this, 101, pauseIntent, PendingIntent.FLAG_IMMUTABLE)
+        val nextPending    = PendingIntent.getBroadcast(this, 102, nextIntent, PendingIntent.FLAG_IMMUTABLE)
+        val prevPending    = PendingIntent.getBroadcast(this, 103, prevIntent, PendingIntent.FLAG_IMMUTABLE)
+        val shufflePending = PendingIntent.getBroadcast(this, 104, shuffleIntent, PendingIntent.FLAG_IMMUTABLE)
+        val repeatPending  = PendingIntent.getBroadcast(this, 105, repeatIntent, PendingIntent.FLAG_IMMUTABLE)
 
         val openIntent = Intent(this, PlaySong::class.java)
         val openPending = PendingIntent.getActivity(this, 200, openIntent, PendingIntent.FLAG_IMMUTABLE)

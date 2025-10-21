@@ -21,6 +21,7 @@ import android.widget.Toast
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
 import androidx.palette.graphics.Palette
@@ -252,9 +253,13 @@ class Favourite : Fragment() {
         songAdapter.setOnItemClickListener(object : SuggestionSongAdapter.OnItemClickListener {
             override fun onItemClick(position: Int) {
                 if (musicPlayerService != null) {
-                    musicPlayerService?.setPlaylist(songList,position)
-                    val intent = Intent(requireContext(), MusicPlayerService::class.java)
-                    requireContext().startService(intent)
+                    val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
+                        action = MusicPlayerService.ACTION_PLAY_NEW
+                        putParcelableArrayListExtra("playlist", songList)
+                        putExtra("index", position)
+                    }
+
+                    ContextCompat.startForegroundService(requireContext(), intent)
                 }
                 Home.RecentlyPlayedManager.addToRecentlyPlayed(requireContext(),songList[position])
             }
