@@ -3,16 +3,19 @@ package com.example.musify
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.text.Html
 import android.util.Log
 import android.view.View
+import android.view.WindowInsetsController
 import android.view.animation.AnimationUtils
 import android.widget.TextView
 import android.widget.Toast
@@ -23,6 +26,7 @@ import androidx.appcompat.widget.AppCompatImageView
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -130,6 +134,25 @@ class MyPlaylistActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         enableEdgeToEdgeWithInsets(binding.root)
+
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        val isDark = nightModeFlags == Configuration.UI_MODE_NIGHT_YES
+
+        window.statusBarColor = ContextCompat.getColor(
+            this,
+            if (isDark) R.color.status_bar_dark else R.color.status_bar_light
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.insetsController?.setSystemBarsAppearance(
+                if (isDark) 0 else WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val decor = window.decorView
+            decor.systemUiVisibility = if (isDark) 0 else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        }
 
         binding.progressBar.fadeIn()
         binding.scrollView.fadeOut()
@@ -441,36 +464,52 @@ class MyPlaylistActivity : AppCompatActivity() {
             .load(imageUrl)
             .override(500, 500)
             .into(object : CustomTarget<Bitmap>() {
-                override fun onResourceReady(
-                    resource: Bitmap,
-                    transition: com.bumptech.glide.request.transition.Transition<in Bitmap>?
-                ) {
+                override fun onResourceReady(resource: Bitmap, transition: com.bumptech.glide.request.transition.Transition<in Bitmap>?) {
+
                     Palette.from(resource).generate { palette ->
-                        if (palette == null) return@generate
+                        val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
+                        val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
 
-                        val vibrant = palette.getVibrantColor(Color.BLACK)
-                        val darkVibrant = palette.getDarkVibrantColor(Color.DKGRAY)
-
-                        val gradientDrawable = GradientDrawable(
-                            GradientDrawable.Orientation.LEFT_RIGHT,
+                        // 🌈 Base gradient (vibrant glass)
+                        val baseGradient = GradientDrawable(
+                            GradientDrawable.Orientation.TOP_BOTTOM,
                             intArrayOf(
-                                vibrant.adjustAlpha(0.9f),
-                                darkVibrant.adjustAlpha(0.9f)
+                                ColorUtils.setAlphaComponent(darkVibrant, 180),
+                                ColorUtils.setAlphaComponent(vibrant, 180)
                             )
-                        )
-                        gradientDrawable.cornerRadius = 0f
-                        gradientDrawable.gradientType = GradientDrawable.LINEAR_GRADIENT
-
-                        val glassColor = "#66FFFFFF".toColorInt() // semi-transparent white overlay
-                        val glassLayer = GradientDrawable().apply {
-                            shape = GradientDrawable.RECTANGLE
-                            colors = intArrayOf(glassColor, Color.TRANSPARENT)
+                        ).apply {
                             gradientType = GradientDrawable.LINEAR_GRADIENT
+                            cornerRadius = 0f
                         }
 
-                        val layerDrawable = LayerDrawable(arrayOf(gradientDrawable, glassLayer))
+                        // 💎 Frosted glass overlay (soft white tint)
+                        val glassOverlay = GradientDrawable().apply {
+                            colors = intArrayOf(
+                                ColorUtils.setAlphaComponent(Color.WHITE, 90),
+                                ColorUtils.setAlphaComponent(Color.WHITE, 20)
+                            )
+                            gradientType = GradientDrawable.LINEAR_GRADIENT
+                            orientation = GradientDrawable.Orientation.TOP_BOTTOM
+                        }
+
+                        // 🌟 Glow effect (outer light aura)
+                        val glowOverlay = GradientDrawable().apply {
+                            shape = GradientDrawable.RECTANGLE
+                            gradientType = GradientDrawable.RADIAL_GRADIENT
+                            gradientRadius = 700f
+                            colors = intArrayOf(
+                                ColorUtils.setAlphaComponent(vibrant, 100),
+                                Color.TRANSPARENT
+                            )
+                            setGradientCenter(0.5f, 0.3f) // position glow (center/top)
+                        }
+
+                        // 🧊 Combine layers
+                        val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
+                        layerDrawable.setLayerInset(0, -50, -50, -50, -50) // glow extends beyond bounds
+
                         backgroundView.background = layerDrawable
-                        backgroundView.background.alpha = 200 // adjust transparency (0–255)
+                        backgroundView.background.alpha = 230 // control overall transparency (0–255)
                     }
                 }
 
@@ -496,13 +535,7 @@ class MyPlaylistActivity : AppCompatActivity() {
             }
             .start()
     }
-    fun Int.adjustAlpha(factor: Float): Int {
-        val alpha = (Color.alpha(this) * factor).toInt()
-        val red = Color.red(this)
-        val green = Color.green(this)
-        val blue = Color.blue(this)
-        return Color.argb(alpha, red, green, blue)
-    }
+
     fun enableEdgeToEdgeWithInsets(rootView: View) {
         val activity = rootView.context as ComponentActivity
         WindowCompat.setDecorFitsSystemWindows(activity.window, false)

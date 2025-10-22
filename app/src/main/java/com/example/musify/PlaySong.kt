@@ -25,8 +25,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.cardview.widget.CardView
-import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -49,15 +49,15 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.GenericTypeIndicator
 import com.google.firebase.database.MutableData
+import com.google.firebase.database.Transaction
 import com.google.firebase.database.ValueEventListener
 import com.squareup.picasso.Picasso
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.util.Locale
-import com.google.firebase.database.Transaction
-import com.google.firebase.database.GenericTypeIndicator
 
 class PlaySong : AppCompatActivity() {
     private lateinit var binding: ActivityPlaySongBinding
@@ -638,31 +638,52 @@ class PlaySong : AppCompatActivity() {
 
                     override fun onResourceReady(resource: Bitmap, transition: com.bumptech.glide.request.transition.Transition<in Bitmap>?) {
 
-                        // Generate palette
                         Palette.from(resource).generate { palette ->
                             val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
                             val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
 
-                            // Dark → Light gradient (TOP to BOTTOM)
-                            val gradientDrawable = GradientDrawable(
+                            // 🌈 Base gradient (vibrant glass)
+                            val baseGradient = GradientDrawable(
                                 GradientDrawable.Orientation.TOP_BOTTOM,
-                                intArrayOf(darkVibrant, vibrant)
-                            )
-
-                            gradientDrawable.cornerRadius = 0f
-                            gradientDrawable.gradientType = GradientDrawable.LINEAR_GRADIENT
-
-                            val glassColor = "#66FFFFFF".toColorInt() // semi-transparent white overlay
-                            val glassLayer = GradientDrawable().apply {
-                                shape = GradientDrawable.RECTANGLE
-                                colors = intArrayOf(glassColor, Color.TRANSPARENT)
+                                intArrayOf(
+                                    ColorUtils.setAlphaComponent(darkVibrant, 180),
+                                    ColorUtils.setAlphaComponent(vibrant, 180)
+                                )
+                            ).apply {
                                 gradientType = GradientDrawable.LINEAR_GRADIENT
+                                cornerRadius = 0f
                             }
 
-                            val layerDrawable = LayerDrawable(arrayOf(gradientDrawable, glassLayer))
+                            // 💎 Frosted glass overlay (soft white tint)
+                            val glassOverlay = GradientDrawable().apply {
+                                colors = intArrayOf(
+                                    ColorUtils.setAlphaComponent(Color.WHITE, 90),
+                                    ColorUtils.setAlphaComponent(Color.WHITE, 20)
+                                )
+                                gradientType = GradientDrawable.LINEAR_GRADIENT
+                                orientation = GradientDrawable.Orientation.TOP_BOTTOM
+                            }
+
+                            // 🌟 Glow effect (outer light aura)
+                            val glowOverlay = GradientDrawable().apply {
+                                shape = GradientDrawable.RECTANGLE
+                                gradientType = GradientDrawable.RADIAL_GRADIENT
+                                gradientRadius = 700f
+                                colors = intArrayOf(
+                                    ColorUtils.setAlphaComponent(vibrant, 100),
+                                    Color.TRANSPARENT
+                                )
+                                setGradientCenter(0.5f, 0.3f) // position glow (center/top)
+                            }
+
+                            // 🧊 Combine layers
+                            val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
+                            layerDrawable.setLayerInset(0, -50, -50, -50, -50) // glow extends beyond bounds
+
                             backgroundView.background = layerDrawable
-                            backgroundView.background.alpha = 200 // adjust transparency (0–255)
+                            backgroundView.background.alpha = 230 // control overall transparency (0–255)
                         }
+
                     }
 
                     override fun onLoadCleared(placeholder: Drawable?) {}

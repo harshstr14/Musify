@@ -1,13 +1,17 @@
 package com.example.musify
 
 import android.content.Intent
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.WindowInsetsController
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -33,6 +37,25 @@ class SignUp : AppCompatActivity() {
         setContentView(binding.root)
 
         enableEdgeToEdgeWithInsets(binding.root)
+
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        val isDark = nightModeFlags == Configuration.UI_MODE_NIGHT_YES
+
+        window.statusBarColor = ContextCompat.getColor(
+            this,
+            if (isDark) R.color.status_bar_dark else R.color.status_bar_light
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.insetsController?.setSystemBarsAppearance(
+                if (isDark) 0 else WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val decor = window.decorView
+            decor.systemUiVisibility = if (isDark) 0 else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        }
 
         googleSignInManager = GoogleSignInManager.getInstance(this)
         googleSignInManager?.setUpGoogleSignInOption()

@@ -1,9 +1,11 @@
 package com.example.musify
 
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsetsController
 import android.view.animation.AnimationUtils
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
@@ -30,20 +32,22 @@ class MainActivity2 : AppCompatActivity() {
         enableEdgeToEdgeWithInsets(binding.root, binding.bottomNavBar)
 
         WindowCompat.setDecorFitsSystemWindows(window, true)
+        val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        val isDark = nightModeFlags == Configuration.UI_MODE_NIGHT_YES
 
-        val insetsController = WindowInsetsControllerCompat(window, window.decorView)
+        window.statusBarColor = ContextCompat.getColor(
+            this,
+            if (isDark) R.color.status_bar_dark else R.color.status_bar_light
+        )
 
-        val nightModeFlags = resources.configuration.uiMode and
-                Configuration.UI_MODE_NIGHT_MASK
-
-        if (nightModeFlags == Configuration.UI_MODE_NIGHT_YES) {
-            // 🌙 Dark mode
-            insetsController.isAppearanceLightStatusBars = false
-            window.statusBarColor = getColor(R.color.status_bar_dark)
-        } else {
-            // ☀️ Light mode
-            insetsController.isAppearanceLightStatusBars = true
-            window.statusBarColor = getColor(R.color.status_bar_light)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.insetsController?.setSystemBarsAppearance(
+                if (isDark) 0 else WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val decor = window.decorView
+            decor.systemUiVisibility = if (isDark) 0 else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
         }
 
         if (savedInstanceState == null) {
