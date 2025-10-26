@@ -13,7 +13,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="10dp"
-        android:layout_marginTop="5dp"
+        android:layout_marginTop="25dp"
         android:rotation="180"
         android:padding="15dp"
         app:tint="#F8F9FA"
@@ -82,21 +82,23 @@
 
             <TextView
                 android:id="@+id/playlistNameText"
-                android:layout_width="130dp"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="15dp"
+                android:layout_marginEnd="25dp"
+                android:layout_marginTop="5dp"
                 android:fontFamily="@font/merriweathersans_semibold"
                 android:maxLines="2"
                 android:text="Album Name"
                 android:textColor="#F8F9FA"
                 android:textSize="16.352sp"
-                android:layout_marginTop="5dp"
-                android:layout_marginStart="15dp"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/cardView2"
                 app:layout_constraintTop_toTopOf="@+id/cardView2" />
 
             <TextView
                 android:id="@+id/descriptionText"
-                android:layout_width="130dp"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:fontFamily="@font/merriweathersans_regular"
@@ -123,16 +125,16 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
-                android:layout_marginEnd="45dp"
+                android:layout_marginStart="55dp"
                 app:layout_constraintBottom_toBottomOf="@+id/cardView2"
-                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/shuffleButton"
                 app:srcCompat="@drawable/notificationplaybutton" />
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/shuffleButton"
                 android:layout_width="26dp"
                 android:layout_height="26dp"
-                android:layout_marginStart="28dp"
+                android:layout_marginStart="25dp"
                 app:layout_constraintBottom_toBottomOf="@+id/appCompatImageView6"
                 app:layout_constraintStart_toEndOf="@+id/cardView2"
                 app:layout_constraintTop_toTopOf="@+id/appCompatImageView6"

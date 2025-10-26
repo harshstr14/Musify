@@ -24,7 +24,6 @@ import androidx.appcompat.widget.AppCompatImageView
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.graphics.ColorUtils
-import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
 import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -306,7 +305,6 @@ class MyPlaylist : Fragment() {
             }
         })
     }
-
     private fun View.fadeIn(duration: Long = 300) {
         this.apply {
             alpha = 0f
@@ -338,7 +336,7 @@ class MyPlaylist : Fragment() {
             playPauseButton.setImageResource(R.drawable.playbutton)
         }
     }
-    fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
+    private fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
         Glide.with(imageView.context)
             .asBitmap()
             .load(imageUrl)
@@ -350,7 +348,6 @@ class MyPlaylist : Fragment() {
                         val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
                         val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
 
-                        // 🌈 Base gradient (vibrant glass)
                         val baseGradient = GradientDrawable(
                             GradientDrawable.Orientation.TOP_BOTTOM,
                             intArrayOf(
@@ -362,7 +359,6 @@ class MyPlaylist : Fragment() {
                             cornerRadius = 0f
                         }
 
-                        // 💎 Frosted glass overlay (soft white tint)
                         val glassOverlay = GradientDrawable().apply {
                             colors = intArrayOf(
                                 ColorUtils.setAlphaComponent(Color.WHITE, 90),
@@ -372,7 +368,6 @@ class MyPlaylist : Fragment() {
                             orientation = GradientDrawable.Orientation.TOP_BOTTOM
                         }
 
-                        // 🌟 Glow effect (outer light aura)
                         val glowOverlay = GradientDrawable().apply {
                             shape = GradientDrawable.RECTANGLE
                             gradientType = GradientDrawable.RADIAL_GRADIENT
@@ -384,12 +379,11 @@ class MyPlaylist : Fragment() {
                             setGradientCenter(0.5f, 0.3f) // position glow (center/top)
                         }
 
-                        // 🧊 Combine layers
                         val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
-                        layerDrawable.setLayerInset(0, -50, -50, -50, -50) // glow extends beyond bounds
+                        layerDrawable.setLayerInset(0, -50, -50, -50, -50)
 
                         backgroundView.background = layerDrawable
-                        backgroundView.background.alpha = 230 // control overall transparency (0–255)
+                        backgroundView.background.alpha = 230
                     }
                 }
 

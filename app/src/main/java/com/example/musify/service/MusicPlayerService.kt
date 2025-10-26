@@ -87,16 +87,27 @@ class MusicPlayerService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+
+        val placeholderNotification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Musify is starting…")
+            .setContentText("Preparing your music")
+            .setSmallIcon(R.drawable.headset_image)
+            .build()
+        startForeground(NOTIFICATION_ID, placeholderNotification)
+
         initPlayer()
         initMediaSession()
     }
     private fun initPlayer() {
-        player = ExoPlayer.Builder(this).build()
+        player = ExoPlayer.Builder(this)
+            .setWakeMode(C.WAKE_MODE_LOCAL)
+            .build()
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .build()
         player.setAudioAttributes(audioAttributes, true)
+        player.setHandleAudioBecomingNoisy(true)
 
         player.addListener(object : Listener {
             override fun onPlaybackStateChanged(state: Int) {
@@ -208,7 +219,7 @@ class MusicPlayerService : LifecycleService() {
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Musify is running…")
                 .setContentText("Preparing your music")
-                .setSmallIcon(R.drawable.listener)
+                .setSmallIcon(R.drawable.headset_image)
                 .build()
             startForeground(NOTIFICATION_ID, notification)
         }
@@ -234,6 +245,7 @@ class MusicPlayerService : LifecycleService() {
         val song = playlist[index]
         currentSongLive.postValue(song)
         prepareAndPlay(song)
+        Home.RecentlyPlayedManager.addToRecentlyPlayed(this,playlist[index])
     }
     private fun prepareAndPlay(song: SongItem) {
         player.stop()
@@ -278,17 +290,15 @@ class MusicPlayerService : LifecycleService() {
                 // Pick a random song
                 val randomIndex = (playlist.indices).random()
                 playIndex(randomIndex)
-                Home.RecentlyPlayedManager.addToRecentlyPlayed(this,playlist[randomIndex])
             }
             else -> {
                 // Normal next
                 val nextIndex = currentIndex + 1
                 if (nextIndex in playlist.indices) {
                     playIndex(nextIndex)
-                    Home.RecentlyPlayedManager.addToRecentlyPlayed(this,playlist[nextIndex])
                 } else {
                     // reached end → stop or repeat whole playlist
-                    player.pause()
+                    playIndex(0)
                 }
             }
         }
@@ -305,14 +315,12 @@ class MusicPlayerService : LifecycleService() {
                 // Pick a random song
                 val randomIndex = (playlist.indices).random()
                 playIndex(randomIndex)
-                Home.RecentlyPlayedManager.addToRecentlyPlayed(this,playlist[randomIndex])
             }
             else -> {
                 // Normal previous
                 val prevIndex = currentIndex - 1
                 if (prevIndex >= 0) {
                     playIndex(prevIndex)
-                    Home.RecentlyPlayedManager.addToRecentlyPlayed(this,playlist[prevIndex])
                 } else {
                     // At beginning → restart current song
                     player.seekTo(0)
@@ -336,6 +344,7 @@ class MusicPlayerService : LifecycleService() {
     }
 
     override fun onDestroy() {
+        Log.w("MusicPlayerService", "Service destroyed by system")
         handler.removeCallbacks(progressRunnable)
         if (::player.isInitialized) player.release()
         if (::mediaSession.isInitialized) mediaSession.release()
@@ -482,7 +491,7 @@ class MusicPlayerService : LifecycleService() {
         val notifBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(songName)
             .setContentText(song.artist)
-            .setSmallIcon(R.drawable.listener)
+            .setSmallIcon(R.drawable.headset_image)
             .setLargeIcon(bitmap)
             .setContentIntent(openPending)
             .setOnlyAlertOnce(true)

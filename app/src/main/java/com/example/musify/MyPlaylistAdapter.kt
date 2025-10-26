@@ -36,7 +36,7 @@ class MyPlaylistAdapter (private val playlistList: MutableList<PlaylistData>,
         holder.threeDots?.setOnClickListener { view ->
             val wrapper = ContextThemeWrapper(view.context, R.style.CustomPopupThemeOverlay)
             val popup = PopupMenu(wrapper, view)
-            popup.inflate(R.menu.playlist_menu)
+            popup.menuInflater.inflate(R.menu.playlist_menu, popup.menu)
             popup.setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     R.id.action_rename -> {
@@ -50,7 +50,9 @@ class MyPlaylistAdapter (private val playlistList: MutableList<PlaylistData>,
                     else -> false
                 }
             }
-            popup.show()
+            view.post {
+                popup.show()
+            }
         }
     }
 

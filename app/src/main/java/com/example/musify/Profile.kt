@@ -23,6 +23,7 @@ import com.cloudinary.android.MediaManager
 import com.cloudinary.android.callback.ErrorInfo
 import com.cloudinary.android.callback.UploadCallback
 import com.example.musify.databinding.FragmentProfileBinding
+import com.example.musify.service.MusicPlayerService
 import com.facebook.shimmer.ShimmerFrameLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
@@ -188,6 +189,13 @@ class Profile : Fragment() {
                 apply() }
 
             googleSignInManager!!.signOut()
+
+            try {
+                val serviceIntent = Intent(requireContext(), MusicPlayerService::class.java)
+                requireContext().stopService(serviceIntent)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
 
             val intent = Intent(requireContext(), SignIn::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)

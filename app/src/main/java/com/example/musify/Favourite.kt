@@ -23,7 +23,6 @@ import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
-import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
 import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.GridLayoutManager
@@ -122,8 +121,11 @@ class Favourite : Fragment() {
 
     override fun onStart() {
         super.onStart()
-        val intent = Intent(requireContext(), MusicPlayerService::class.java)
-        requireContext().bindService(intent,connection, Context.BIND_AUTO_CREATE)
+        if (!bound) {
+            val serviceIntent = Intent(requireContext(), MusicPlayerService::class.java)
+            ContextCompat.startForegroundService(requireContext(), serviceIntent)
+            requireContext().bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
+        }
     }
 
     override fun onStop() {
@@ -253,15 +255,13 @@ class Favourite : Fragment() {
 
         songAdapter.setOnItemClickListener(object : SuggestionSongAdapter.OnItemClickListener {
             override fun onItemClick(position: Int) {
-                if (musicPlayerService != null) {
-                    val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
-                        action = MusicPlayerService.ACTION_PLAY_NEW
-                        putParcelableArrayListExtra("playlist", songList)
-                        putExtra("index", position)
-                    }
-
-                    ContextCompat.startForegroundService(requireContext(), intent)
+                val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    putParcelableArrayListExtra("playlist", songList)
+                    putExtra("index", position)
                 }
+
+                ContextCompat.startForegroundService(requireContext(), intent)
                 Home.RecentlyPlayedManager.addToRecentlyPlayed(requireContext(),songList[position])
             }
         })
@@ -363,7 +363,6 @@ class Favourite : Fragment() {
                                 }
                             })
                             onDataLoaded("songs")
-                            updateCategoryVisibility()
                         }
                     }
                 }
@@ -439,11 +438,12 @@ class Favourite : Fragment() {
 
                 requireActivity().runOnUiThread {
                     if (isAdded && view != null) {
-                        artistsList.clear()
-                        artistsList.addAll(tempList)
-                        artistsAdapter.notifyDataSetChanged()
-                        onDataLoaded("artists")
-                        updateCategoryVisibility()
+                        binding.artistsRecyclerView.post {
+                            artistsList.clear()
+                            artistsList.addAll(tempList)
+                            artistsAdapter.notifyDataSetChanged()
+                            onDataLoaded("artists")
+                        }
                     }
                 }
 
@@ -498,11 +498,12 @@ class Favourite : Fragment() {
 
                 requireActivity().runOnUiThread {
                     if (isAdded && view != null) {
-                        albumsList.clear()
-                        albumsList.addAll(tempList)
-                        albumAdapter.notifyDataSetChanged()
-                        onDataLoaded("albums")
-                        updateCategoryVisibility()
+                        binding.albumsRecyclerView.post {
+                            albumsList.clear()
+                            albumsList.addAll(tempList)
+                            albumAdapter.notifyDataSetChanged()
+                            onDataLoaded("albums")
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -533,13 +534,6 @@ class Favourite : Fragment() {
 
         return DataItem(id,name,artistName,imageUrl)
     }
-    private fun updateMiniPlayer(songItem: SongItem?) {
-        songName.text = Html.fromHtml(songItem?.name ?: "", Html.FROM_HTML_MODE_LEGACY)
-        artistName.text = songItem?.artist
-        Picasso.get().load(songItem?.image[1]?.url).into(songImage)
-        setDynamicBackground(songItem?.image[1]?.url ?: "" ,songImage,background)
-
-    }
     fun fetchPlaylistsByIDs(playlistsID: List<String>) {
         Thread {
             val client = OkHttpClient()
@@ -568,11 +562,12 @@ class Favourite : Fragment() {
 
                 requireActivity().runOnUiThread {
                     if (isAdded && view != null) {
-                        playlistsList.clear()
-                        playlistsList.addAll(tempList)
-                        playListAdapter.notifyDataSetChanged()
-                        onDataLoaded("playlists")
-                        updateCategoryVisibility()
+                        binding.playListRecyclerView.post {
+                            playlistsList.clear()
+                            playlistsList.addAll(tempList)
+                            playListAdapter.notifyDataSetChanged()
+                            onDataLoaded("playlists")
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -597,6 +592,13 @@ class Favourite : Fragment() {
 
         return DataItem(id,name,"",imageUrl)
     }
+    private fun updateMiniPlayer(songItem: SongItem?) {
+        songName.text = Html.fromHtml(songItem?.name ?: "", Html.FROM_HTML_MODE_LEGACY)
+        artistName.text = songItem?.artist
+        Picasso.get().load(songItem?.image[1]?.url).into(songImage)
+        setDynamicBackground(songItem?.image[1]?.url ?: "" ,songImage,background)
+
+    }
     private fun updatePlayPauseIcon(isPlaying: Boolean) {
         if (isPlaying) {
             playPauseButton.setImageResource(R.drawable.pausebutton)
@@ -604,7 +606,7 @@ class Favourite : Fragment() {
             playPauseButton.setImageResource(R.drawable.playbutton)
         }
     }
-    fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
+    private fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
         Glide.with(imageView.context)
             .asBitmap()
             .load(imageUrl)
@@ -616,7 +618,6 @@ class Favourite : Fragment() {
                         val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
                         val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
 
-                        // 🌈 Base gradient (vibrant glass)
                         val baseGradient = GradientDrawable(
                             GradientDrawable.Orientation.TOP_BOTTOM,
                             intArrayOf(
@@ -628,7 +629,6 @@ class Favourite : Fragment() {
                             cornerRadius = 0f
                         }
 
-                        // 💎 Frosted glass overlay (soft white tint)
                         val glassOverlay = GradientDrawable().apply {
                             colors = intArrayOf(
                                 ColorUtils.setAlphaComponent(Color.WHITE, 90),
@@ -638,7 +638,6 @@ class Favourite : Fragment() {
                             orientation = GradientDrawable.Orientation.TOP_BOTTOM
                         }
 
-                        // 🌟 Glow effect (outer light aura)
                         val glowOverlay = GradientDrawable().apply {
                             shape = GradientDrawable.RECTANGLE
                             gradientType = GradientDrawable.RADIAL_GRADIENT
@@ -647,15 +646,14 @@ class Favourite : Fragment() {
                                 ColorUtils.setAlphaComponent(vibrant, 100),
                                 Color.TRANSPARENT
                             )
-                            setGradientCenter(0.5f, 0.3f) // position glow (center/top)
+                            setGradientCenter(0.5f, 0.3f)
                         }
 
-                        // 🧊 Combine layers
                         val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
-                        layerDrawable.setLayerInset(0, -50, -50, -50, -50) // glow extends beyond bounds
+                        layerDrawable.setLayerInset(0, -50, -50, -50, -50)
 
                         backgroundView.background = layerDrawable
-                        backgroundView.background.alpha = 230 // control overall transparency (0–255)
+                        backgroundView.background.alpha = 230
                     }
                 }
 
@@ -672,8 +670,10 @@ class Favourite : Fragment() {
             "playlists" -> playlistsLoaded = true
         }
 
-        activity?.runOnUiThread {
-            updateCategoryVisibility()
+        if (this.category == category) {
+            activity?.runOnUiThread {
+                updateCategoryVisibility()
+            }
         }
     }
     private fun updateCategoryVisibility() {
@@ -683,74 +683,76 @@ class Favourite : Fragment() {
             "songs" -> {
                 binding.likedSongRecyclerView.post {
                     if (songsLoaded && songList.isNotEmpty()) binding.likedSongRecyclerView.fadeIn()
-                    else if (!songsLoaded) binding.likedSongRecyclerView.fadeIn()
+                    else if (!songsLoaded) binding.likedSongRecyclerView.fadeOut()
+
                     binding.artistsRecyclerView.fadeOut()
                     binding.albumsRecyclerView.fadeOut()
                     binding.playListRecyclerView.fadeOut()
-                    if (songList.isEmpty()) {
-                        binding.noFavText.fadeIn()
-                    } else {
-                        binding.noFavText.fadeOut()
-                    }
+
                     if (!songsLoaded) {
                         binding.progressBar.fadeIn()
+                        binding.noFavText.fadeOut()
                     } else {
                         binding.progressBar.fadeOut()
+                        if (songList.isEmpty()) binding.noFavText.fadeIn() else binding.noFavText.fadeOut()
                     }
                 }
             }
 
             "artists" -> {
-                if (artistsLoaded && albumsList.isNotEmpty()) binding.artistsRecyclerView.fadeIn()
-                else if (!artistsLoaded) binding.artistsRecyclerView.fadeIn()
-                binding.likedSongRecyclerView.fadeOut()
-                binding.albumsRecyclerView.fadeOut()
-                binding.playListRecyclerView.fadeOut()
-                if (artistsList.isEmpty()) {
-                    binding.noFavText.fadeIn()
-                } else {
-                    binding.noFavText.fadeOut()
-                }
-                if (!artistsLoaded) {
-                    binding.progressBar.fadeIn()
-                } else {
-                    binding.progressBar.fadeOut()
+                binding.artistsRecyclerView.post {
+                    if (artistsLoaded && artistsList.isNotEmpty()) binding.artistsRecyclerView.fadeIn()
+                    else if (!artistsLoaded) binding.artistsRecyclerView.fadeOut()
+
+                    binding.likedSongRecyclerView.fadeOut()
+                    binding.albumsRecyclerView.fadeOut()
+                    binding.playListRecyclerView.fadeOut()
+
+                    if (!artistsLoaded) {
+                        binding.progressBar.fadeIn()
+                        binding.noFavText.fadeOut()
+                    } else {
+                        binding.progressBar.fadeOut()
+                        if (artistsList.isEmpty()) binding.noFavText.fadeIn() else binding.noFavText.fadeOut()
+                    }
                 }
             }
 
             "albums" -> {
-                if (albumsLoaded && albumsList.isNotEmpty()) binding.albumsRecyclerView.fadeIn()
-                else if (!albumsLoaded) binding.albumsRecyclerView.fadeIn()
-                binding.artistsRecyclerView.fadeOut()
-                binding.likedSongRecyclerView.fadeOut()
-                binding.playListRecyclerView.fadeOut()
-                if (albumsList.isEmpty()) {
-                    binding.noFavText.fadeIn()
-                } else {
-                    binding.noFavText.fadeOut()
-                }
-                if (!albumsLoaded) {
-                    binding.progressBar.fadeIn()
-                } else {
-                    binding.progressBar.fadeOut()
+                binding.albumsRecyclerView.post {
+                    if (albumsLoaded && albumsList.isNotEmpty()) binding.albumsRecyclerView.fadeIn()
+                    else if (!albumsLoaded) binding.albumsRecyclerView.fadeOut()
+
+                    binding.likedSongRecyclerView.fadeOut()
+                    binding.artistsRecyclerView.fadeOut()
+                    binding.playListRecyclerView.fadeOut()
+
+                    if (!albumsLoaded) {
+                        binding.progressBar.fadeIn()
+                        binding.noFavText.fadeOut()
+                    } else {
+                        binding.progressBar.fadeOut()
+                        if (albumsList.isEmpty()) binding.noFavText.fadeIn() else binding.noFavText.fadeOut()
+                    }
                 }
             }
 
             "playlists" -> {
-                if (playlistsLoaded && playlistsList.isNotEmpty()) binding.playListRecyclerView.fadeIn()
-                else if (!playlistsLoaded) binding.playListRecyclerView.fadeIn()
-                binding.artistsRecyclerView.fadeOut()
-                binding.albumsRecyclerView.fadeOut()
-                binding.likedSongRecyclerView.fadeOut()
-                if (playlistsList.isEmpty()) {
-                    binding.noFavText.fadeIn()
-                } else {
-                    binding.noFavText.fadeOut()
-                }
-                if (!playlistsLoaded) {
-                    binding.progressBar.fadeIn()
-                } else {
-                    binding.progressBar.fadeOut()
+                binding.playListRecyclerView.post {
+                    if (playlistsLoaded && playlistsList.isNotEmpty()) binding.playListRecyclerView.fadeIn()
+                    else if (!playlistsLoaded) binding.playListRecyclerView.fadeOut()
+
+                    binding.likedSongRecyclerView.fadeOut()
+                    binding.artistsRecyclerView.fadeOut()
+                    binding.albumsRecyclerView.fadeOut()
+
+                    if (!playlistsLoaded) {
+                        binding.progressBar.fadeIn()
+                        binding.noFavText.fadeOut()
+                    } else {
+                        binding.progressBar.fadeOut()
+                        if (playlistsList.isEmpty()) binding.noFavText.fadeIn() else binding.noFavText.fadeOut()
+                    }
                 }
             }
         }
@@ -775,90 +777,104 @@ class Favourite : Fragment() {
     private fun loadFavouriteData() {
         val userID = auth.currentUser?.uid
         if (userID != null) {
-            database.addValueEventListener(object : ValueEventListener {
+            database.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    binding.progressBar.fadeIn()
                     binding.noFavText.fadeOut()
+                    binding.progressBar.fadeIn()
                     //updateCategoryVisibility()
 
                     if (snapshot.exists()) {
-                        val songsReference = FirebaseDatabase.getInstance().getReference().child("Users").child(userID).child("Favourites")
-                            .child("Songs")
-                        songsReference.get().addOnSuccessListener { songsSnapshot ->
-                            if (songsSnapshot.exists()) {
-                                val songIDList = ArrayList<String>()
-                                for (songSnap in songsSnapshot.children) {
-                                    val songID  = songSnap.child("id").getValue(String::class.java)
-                                    if (songID != null) songIDList.add(songID)
-                                }
+                        loadFavouriteSongs(userID)
 
-                                songList.clear()
-                                if (songIDList.isEmpty()) onDataLoaded("songs") else fetchSongsByIDs(songIDList)
-                            } else {
-                                onDataLoaded("songs")
-                            }
-                        }
+                        loadFavouriteArtists(userID)
 
-                        val artistsReference = FirebaseDatabase.getInstance().getReference().child("Users").child(userID).child("Favourites")
-                            .child("Artists")
+                        loadFavouriteAlbums(userID)
 
-                        artistsReference.get().addOnSuccessListener { artistSnapshot ->
-                            if (artistSnapshot.exists()) {
-                                val artistIDList = mutableListOf<String>()
-                                for (artistSnap in artistSnapshot.children) {
-                                    val artistId = artistSnap.child("id").getValue(String::class.java)
-                                    if (artistId != null) artistIDList.add(artistId)
-                                }
-
-                                artistsList.clear()
-                                if (artistIDList.isEmpty()) onDataLoaded("artists") else fetchArtistsByIDs(artistIDList)
-                            } else {
-                                onDataLoaded("artists")
-                            }
-                        }
-
-                        val albumsReference = FirebaseDatabase.getInstance().getReference().child("Users").child(userID).child("Favourites")
-                            .child("Albums")
-
-                        albumsReference.get().addOnSuccessListener { artistSnapshot ->
-                            if (artistSnapshot.exists()) {
-                                val albumsIDList = mutableListOf<String>()
-                                for (albumSnap in artistSnapshot.children) {
-                                    val albumId = albumSnap.child("id").getValue(String::class.java)
-                                    if (albumId != null) albumsIDList.add(albumId)
-                                }
-
-                                albumsList.clear()
-                                if (albumsIDList.isEmpty()) onDataLoaded("albums") else fetchAlbumsByIDs(albumsIDList)
-                            } else {
-                                onDataLoaded("albums")
-                            }
-                        }
-
-                        val playlistReference = FirebaseDatabase.getInstance().getReference().child("Users").child(userID).child("Favourites")
-                            .child("Playlists")
-
-                        playlistReference.get().addOnSuccessListener { artistSnapshot ->
-                            if (artistSnapshot.exists()) {
-                                val playlistIDList = mutableListOf<String>()
-                                for (playlistSnap in artistSnapshot.children) {
-                                    val playlistId = playlistSnap.child("id").getValue(String::class.java)
-                                    if (playlistId != null) playlistIDList.add(playlistId)
-                                }
-
-                                playlistsList.clear()
-                                if (playlistIDList.isEmpty()) onDataLoaded("playlists") else fetchPlaylistsByIDs(playlistIDList)
-                            } else {
-                                onDataLoaded("playlists")
-                            }
-                        }
+                        loadFavouritePlaylists(userID)
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("FAV", "Error loading favourites", error.toException())
+                    binding.noFavText.fadeIn()
+                    binding.progressBar.fadeOut()
                 }
             })
+        }
+    }
+    private fun loadFavouriteSongs(userID: String) {
+        val songsReference = FirebaseDatabase.getInstance().getReference().child("Users").child(userID).child("Favourites")
+            .child("Songs")
+        songsReference.get().addOnSuccessListener { songsSnapshot ->
+            if (songsSnapshot.exists()) {
+                val songIDList = ArrayList<String>()
+                for (songSnap in songsSnapshot.children) {
+                    val songID  = songSnap.child("id").getValue(String::class.java)
+                    if (songID != null) songIDList.add(songID)
+                }
+
+                songList.clear()
+                if (songIDList.isEmpty()) onDataLoaded("songs") else fetchSongsByIDs(songIDList)
+            } else {
+                onDataLoaded("songs")
+            }
+        }
+    }
+    private fun loadFavouriteArtists(userID: String) {
+        val artistsReference = FirebaseDatabase.getInstance().getReference().child("Users").child(userID).child("Favourites")
+            .child("Artists")
+
+        artistsReference.get().addOnSuccessListener { artistSnapshot ->
+            if (artistSnapshot.exists()) {
+                val artistIDList = mutableListOf<String>()
+                for (artistSnap in artistSnapshot.children) {
+                    val artistId = artistSnap.child("id").getValue(String::class.java)
+                    if (artistId != null) artistIDList.add(artistId)
+                }
+
+                artistsList.clear()
+                if (artistIDList.isEmpty()) onDataLoaded("artists") else fetchArtistsByIDs(artistIDList)
+            } else {
+                onDataLoaded("artists")
+            }
+        }
+    }
+    private fun loadFavouriteAlbums(userID: String) {
+        val albumsReference = FirebaseDatabase.getInstance().getReference().child("Users").child(userID).child("Favourites")
+            .child("Albums")
+
+        albumsReference.get().addOnSuccessListener { artistSnapshot ->
+            if (artistSnapshot.exists()) {
+                val albumsIDList = mutableListOf<String>()
+                for (albumSnap in artistSnapshot.children) {
+                    val albumId = albumSnap.child("id").getValue(String::class.java)
+                    if (albumId != null) albumsIDList.add(albumId)
+                }
+
+                albumsList.clear()
+                if (albumsIDList.isEmpty()) onDataLoaded("albums") else fetchAlbumsByIDs(albumsIDList)
+            } else {
+                onDataLoaded("albums")
+            }
+        }
+    }
+    private fun loadFavouritePlaylists(userID: String) {
+        val playlistReference = FirebaseDatabase.getInstance().getReference().child("Users").child(userID).child("Favourites")
+            .child("Playlists")
+
+        playlistReference.get().addOnSuccessListener { artistSnapshot ->
+            if (artistSnapshot.exists()) {
+                val playlistIDList = mutableListOf<String>()
+                for (playlistSnap in artistSnapshot.children) {
+                    val playlistId = playlistSnap.child("id").getValue(String::class.java)
+                    if (playlistId != null) playlistIDList.add(playlistId)
+                }
+
+                playlistsList.clear()
+                if (playlistIDList.isEmpty()) onDataLoaded("playlists") else fetchPlaylistsByIDs(playlistIDList)
+            } else {
+                onDataLoaded("playlists")
+            }
         }
     }
 }

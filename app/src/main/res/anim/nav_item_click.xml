@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <scale xmlns:android="http://schemas.android.com/apk/res/android"
-    android:duration="150"
+    android:duration="100"
     android:fromXScale="1.0"
     android:toXScale="1.15"
     android:fromYScale="1.0"
@@ -8,4 +8,5 @@
     android:pivotX="50%"
     android:pivotY="50%"
     android:repeatCount="1"
+    android:interpolator="@android:interpolator/fast_out_slow_in"
     android:repeatMode="reverse" />

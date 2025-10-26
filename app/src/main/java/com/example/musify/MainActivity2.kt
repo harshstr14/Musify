@@ -1,18 +1,15 @@
 package com.example.musify
 
+import android.app.Activity
 import android.content.res.Configuration
-import android.os.Build
 import android.os.Bundle
 import android.view.View
-import android.view.ViewGroup
-import android.view.WindowInsetsController
 import android.view.animation.AnimationUtils
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -29,26 +26,10 @@ class MainActivity2 : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(binding.root)
+
         enableEdgeToEdgeWithInsets(binding.root, binding.bottomNavBar)
 
-        WindowCompat.setDecorFitsSystemWindows(window, true)
-        val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        val isDark = nightModeFlags == Configuration.UI_MODE_NIGHT_YES
-
-        window.statusBarColor = ContextCompat.getColor(
-            this,
-            if (isDark) R.color.status_bar_dark else R.color.status_bar_light
-        )
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.setSystemBarsAppearance(
-                if (isDark) 0 else WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-            )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val decor = window.decorView
-            decor.systemUiVisibility = if (isDark) 0 else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-        }
+        setStatusBarIconsTheme(this)
 
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()
@@ -143,22 +124,37 @@ class MainActivity2 : AppCompatActivity() {
         binding.navBarPlaylist.isSelected = false
         binding.navBarMyPlayList.isSelected = false
     }
-    fun enableEdgeToEdgeWithInsets(rootView: View, bottomNav: View) {
+    private fun enableEdgeToEdgeWithInsets(rootView: View, bottomNav: View) {
         val activity = rootView.context as ComponentActivity
         WindowCompat.setDecorFitsSystemWindows(activity.window, false)
 
         ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
 
-            binding.frameLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                topMargin = systemBars.top
-            }
-
             bottomNav.updateLayoutParams<ConstraintLayout.LayoutParams> {
                 bottomMargin = systemBars.bottom
             }
 
             insets
+        }
+    }
+    private fun setStatusBarIconsTheme(activity: Activity) {
+        val window = activity.window
+        val decorView = window.decorView
+        val insetsController = WindowInsetsControllerCompat(window, decorView)
+
+        // Detect current theme
+        val isDarkTheme =
+            (activity.resources.configuration.uiMode
+                    and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+        // Set icon color automatically
+        if (isDarkTheme) {
+            // Light icons for dark theme
+            insetsController.isAppearanceLightStatusBars = false
+        } else {
+            // Dark icons for light theme
+            insetsController.isAppearanceLightStatusBars = false
         }
     }
 }

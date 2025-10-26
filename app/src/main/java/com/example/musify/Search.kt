@@ -30,6 +30,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
+import com.example.musify.Home.RecentlyPlayedManager
 import com.example.musify.databinding.FragmentSearchBinding
 import com.example.musify.service.MusicPlayerService
 import com.example.musify.songData.Artists
@@ -151,8 +152,11 @@ class Search : Fragment() {
 
     override fun onStart() {
         super.onStart()
-        val intent = Intent(requireContext(), MusicPlayerService::class.java)
-        requireContext().bindService(intent,connection, Context.BIND_AUTO_CREATE)
+        if (!bound) {
+            val serviceIntent = Intent(requireContext(), MusicPlayerService::class.java)
+            ContextCompat.startForegroundService(requireContext(), serviceIntent)
+            requireContext().bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
+        }
     }
 
     override fun onStop() {
@@ -196,16 +200,14 @@ class Search : Fragment() {
 
         songAdapter.setOnItemClickListener(object : SuggestionSongAdapter.OnItemClickListener {
             override fun onItemClick(position: Int) {
-                if (musicPlayerService != null) {
-                    val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
-                        action = MusicPlayerService.ACTION_PLAY_NEW
-                        putParcelableArrayListExtra("playlist", songList)
-                        putExtra("index", position)
-                    }
-
-                    ContextCompat.startForegroundService(requireContext(), intent)
+                val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    putParcelableArrayListExtra("playlist", songList)
+                    putExtra("index", position)
                 }
-                Home.RecentlyPlayedManager.addToRecentlyPlayed(requireContext(),songList[position])
+
+                ContextCompat.startForegroundService(requireContext(), intent)
+                RecentlyPlayedManager.addToRecentlyPlayed(requireContext(),songList[position])
             }
         })
 
@@ -725,7 +727,7 @@ class Search : Fragment() {
             playPauseButton.setImageResource(R.drawable.playbutton)
         }
     }
-    fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
+    private fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
         Glide.with(imageView.context)
             .asBitmap()
             .load(imageUrl)
@@ -737,7 +739,6 @@ class Search : Fragment() {
                         val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
                         val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
 
-                        // 🌈 Base gradient (vibrant glass)
                         val baseGradient = GradientDrawable(
                             GradientDrawable.Orientation.TOP_BOTTOM,
                             intArrayOf(
@@ -749,7 +750,6 @@ class Search : Fragment() {
                             cornerRadius = 0f
                         }
 
-                        // 💎 Frosted glass overlay (soft white tint)
                         val glassOverlay = GradientDrawable().apply {
                             colors = intArrayOf(
                                 ColorUtils.setAlphaComponent(Color.WHITE, 90),
@@ -759,7 +759,6 @@ class Search : Fragment() {
                             orientation = GradientDrawable.Orientation.TOP_BOTTOM
                         }
 
-                        // 🌟 Glow effect (outer light aura)
                         val glowOverlay = GradientDrawable().apply {
                             shape = GradientDrawable.RECTANGLE
                             gradientType = GradientDrawable.RADIAL_GRADIENT
@@ -768,15 +767,14 @@ class Search : Fragment() {
                                 ColorUtils.setAlphaComponent(vibrant, 100),
                                 Color.TRANSPARENT
                             )
-                            setGradientCenter(0.5f, 0.3f) // position glow (center/top)
+                            setGradientCenter(0.5f, 0.3f)
                         }
 
-                        // 🧊 Combine layers
                         val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
-                        layerDrawable.setLayerInset(0, -50, -50, -50, -50) // glow extends beyond bounds
+                        layerDrawable.setLayerInset(0, -50, -50, -50, -50)
 
                         backgroundView.background = layerDrawable
-                        backgroundView.background.alpha = 230 // control overall transparency (0–255)
+                        backgroundView.background.alpha = 230
                     }
                 }
 

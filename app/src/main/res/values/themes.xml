@@ -1,8 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.Musify.Splash" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+
         <item name="android:windowBackground">@drawable/background</item>
 
         <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@drawable/background</item>
@@ -23,55 +22,5 @@
     <style name="CustomPopupThemeOverlay" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="popupMenuStyle">@style/CustomPopupMenuStyle</item>
     </style>
-
-    <!-- AlertDialog Theme Overlay -->
-    <style name="ThemeOverlay.Musify.AlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
-        <!-- Background -->
-        <item name="colorSurface">@color/dialog_background</item>
-
-        <!-- Title & message text appearances -->
-        <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.Musify.Dialog.Title</item>
-        <item name="materialAlertDialogBodyTextStyle">@style/TextAppearance.Musify.Dialog.Message</item>
-
-        <!-- Rounded corners -->
-        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Musify.Dialog</item>
-
-        <!-- Button styles -->
-        <item name="buttonBarPositiveButtonStyle">@style/Musify.Dialog.PositiveButton</item>
-        <item name="buttonBarNegativeButtonStyle">@style/Musify.Dialog.NegativeButton</item>
-    </style>
-
-    <!-- Title font -->
-    <style name="TextAppearance.Musify.Dialog.Title" parent="TextAppearance.Material3.TitleLarge">
-        <item name="android:fontFamily">@font/merriweathersans_semibold</item>
-        <item name="android:textColor">@color/white</item>
-        <item name="android:textSize">20sp</item>
-    </style>
-
-    <!-- Message font -->
-    <style name="TextAppearance.Musify.Dialog.Message" parent="TextAppearance.Material3.BodyMedium">
-        <item name="android:fontFamily">@font/merriweathersans_regular</item>
-        <item name="android:textColor">@color/gray_light</item>
-        <item name="android:textSize">16sp</item>
-    </style>
-
-    <!-- Rounded corner shape -->
-    <style name="ShapeAppearance.Musify.Dialog" parent="ShapeAppearance.Material3.MediumComponent">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">14dp</item>
-    </style>
-
-    <!-- Positive Button -->
-    <style name="Musify.Dialog.PositiveButton" parent="Widget.Material3.Button.TextButton.Dialog">
-        <item name="android:textColor">@color/white</item>
-        <item name="android:fontFamily">@font/merriweathersans_semibold</item>
-    </style>
-
-    <!-- Negative Button -->
-    <style name="Musify.Dialog.NegativeButton" parent="Widget.Material3.Button.TextButton.Dialog">
-        <item name="android:textColor">@color/gray_light</item>
-        <item name="android:fontFamily">@font/merriweathersans_semibold</item>
-    </style>
-
 
 </resources>

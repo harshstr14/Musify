@@ -44,9 +44,10 @@
 
             <TextView
                 android:id="@+id/songNameText"
-                android:layout_width="180dp"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="14dp"
+                android:layout_marginEnd="15dp"
                 android:fontFamily="@font/merriweathersans_semibold"
                 android:text="Song Name"
                 android:textColor="#F8F9FA"
@@ -59,12 +60,13 @@
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:layout_marginTop="2dp"
+                app:layout_constraintEnd_toStartOf="@id/durationText"
                 app:layout_constraintStart_toEndOf="@+id/cardView"
                 app:layout_constraintTop_toTopOf="@+id/cardView" />
 
             <TextView
                 android:id="@+id/artistNameText"
-                android:layout_width="180dp"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="1dp"
                 android:fontFamily="@font/merriweathersans_regular"
@@ -72,6 +74,7 @@
                 android:text="Artist Name"
                 android:textColor="#707B81"
                 android:textSize="12sp"
+                app:layout_constraintEnd_toEndOf="@+id/songNameText"
                 app:layout_constraintStart_toStartOf="@+id/songNameText"
                 app:layout_constraintTop_toBottomOf="@+id/songNameText" />
 

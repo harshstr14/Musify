@@ -1,5 +1,6 @@
 package com.example.musify
 
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
@@ -9,13 +10,11 @@ import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
-import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.text.Html
 import android.util.Log
 import android.view.View
-import android.view.WindowInsetsController
 import android.view.animation.AnimationUtils
 import android.widget.TextView
 import android.widget.Toast
@@ -27,19 +26,19 @@ import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
-import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
+import com.example.musify.Home.RecentlyPlayedManager
 import com.example.musify.databinding.ActivityPlaylistBinding
 import com.example.musify.service.MusicPlayerService
 import com.example.musify.songData.Artists
 import com.example.musify.songData.Image
-import com.facebook.shimmer.ShimmerFrameLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -117,8 +116,11 @@ class PlaylistActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        val intent = Intent(this, MusicPlayerService::class.java)
-        bindService(intent, connection, BIND_AUTO_CREATE)
+        if (!bound) {
+            val serviceIntent = Intent(this, MusicPlayerService::class.java)
+            ContextCompat.startForegroundService(this, serviceIntent)
+            bindService(serviceIntent, connection, BIND_AUTO_CREATE)
+        }
     }
 
     override fun onStop() {
@@ -137,24 +139,7 @@ class PlaylistActivity : AppCompatActivity() {
 
         enableEdgeToEdgeWithInsets(binding.root)
 
-        WindowCompat.setDecorFitsSystemWindows(window, true)
-        val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        val isDark = nightModeFlags == Configuration.UI_MODE_NIGHT_YES
-
-        window.statusBarColor = ContextCompat.getColor(
-            this,
-            if (isDark) R.color.status_bar_dark else R.color.status_bar_light
-        )
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.setSystemBarsAppearance(
-                if (isDark) 0 else WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-            )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val decor = window.decorView
-            decor.systemUiVisibility = if (isDark) 0 else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-        }
+        setStatusBarIconsTheme(this)
 
         binding.progressBar.fadeIn()
         binding.scrollView.fadeOut()
@@ -384,16 +369,14 @@ class PlaylistActivity : AppCompatActivity() {
 
             songAdapter.setOnItemClickListener(object : SuggestionSongAdapter.OnItemClickListener {
                 override fun onItemClick(position: Int) {
-                    if (musicPlayerService != null) {
-                        val intent = Intent(this@PlaylistActivity, MusicPlayerService::class.java).apply {
-                            action = MusicPlayerService.ACTION_PLAY_NEW
-                            putParcelableArrayListExtra("playlist", songList)
-                            putExtra("index", position)
-                        }
-
-                        ContextCompat.startForegroundService(this@PlaylistActivity, intent)
+                    val intent = Intent(this@PlaylistActivity, MusicPlayerService::class.java).apply {
+                        action = MusicPlayerService.ACTION_PLAY_NEW
+                        putParcelableArrayListExtra("playlist", songList)
+                        putExtra("index", position)
                     }
-                    Home.RecentlyPlayedManager.addToRecentlyPlayed(this@PlaylistActivity,songList[position])
+
+                    ContextCompat.startForegroundService(this@PlaylistActivity, intent)
+                    RecentlyPlayedManager.addToRecentlyPlayed(this@PlaylistActivity,songList[position])
                 }
             })
 
@@ -433,33 +416,30 @@ class PlaylistActivity : AppCompatActivity() {
 
             binding.playButtonIcon.setOnClickListener {
                 binding.playButtonIcon.startAnimation(anim)
-                if (musicPlayerService != null) {
-                    val intent = Intent(this, MusicPlayerService::class.java).apply {
-                        action = MusicPlayerService.ACTION_PLAY_NEW
-                        putParcelableArrayListExtra("playlist", songList)
-                    }
-
-                    ContextCompat.startForegroundService(this, intent)
+                val intent = Intent(this, MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    putParcelableArrayListExtra("playlist", songList)
                 }
+
+                ContextCompat.startForegroundService(this, intent)
             }
 
             binding.shuffleButton.setOnClickListener {
                 Toast.makeText(this,"Playing with Shuffle", Toast.LENGTH_SHORT).show()
-                if (musicPlayerService != null) {
-                    val intent = Intent(this, MusicPlayerService::class.java).apply {
-                        action = MusicPlayerService.ACTION_PLAY_NEW
-                        putParcelableArrayListExtra("playlist", songList)
-                    }
-
-                    ContextCompat.startForegroundService(this, intent)
+                val intent = Intent(this, MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    putParcelableArrayListExtra("playlist", songList)
                 }
+
+                ContextCompat.startForegroundService(this, intent)
+
                 binding.shuffleButton.startAnimation(anim)
                 musicPlayerService?.updateNotification()
                 musicPlayerService?.isShuffle?.value = !(musicPlayerService?.isShuffle?.value ?: false)
             }
         }
     }
-    fun formatDuration(totalSeconds: Int): String {
+    private fun formatDuration(totalSeconds: Int): String {
         val hours = totalSeconds / 3600
         val minutes = (totalSeconds % 3600) / 60
         val seconds = totalSeconds % 60
@@ -473,7 +453,6 @@ class PlaylistActivity : AppCompatActivity() {
     }
     private fun updateMiniPlayer(songItem: SongItem?) {
         songName.text = Html.fromHtml(songItem?.name ?: "", Html.FROM_HTML_MODE_LEGACY)
-        songName.isSelected = true
         artistName.text = songItem?.artist
         Picasso.get().load(songItem?.image[1]?.url).into(songImage)
         setDynamicBackground(songItem?.image[1]?.url ?: "",songImage,background)
@@ -485,7 +464,7 @@ class PlaylistActivity : AppCompatActivity() {
             playPauseButton.setImageResource(R.drawable.playbutton)
         }
     }
-    fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
+    private fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
         Glide.with(imageView.context)
             .asBitmap()
             .load(imageUrl)
@@ -497,7 +476,6 @@ class PlaylistActivity : AppCompatActivity() {
                         val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
                         val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
 
-                        // 🌈 Base gradient (vibrant glass)
                         val baseGradient = GradientDrawable(
                             GradientDrawable.Orientation.TOP_BOTTOM,
                             intArrayOf(
@@ -509,7 +487,6 @@ class PlaylistActivity : AppCompatActivity() {
                             cornerRadius = 0f
                         }
 
-                        // 💎 Frosted glass overlay (soft white tint)
                         val glassOverlay = GradientDrawable().apply {
                             colors = intArrayOf(
                                 ColorUtils.setAlphaComponent(Color.WHITE, 90),
@@ -519,7 +496,6 @@ class PlaylistActivity : AppCompatActivity() {
                             orientation = GradientDrawable.Orientation.TOP_BOTTOM
                         }
 
-                        // 🌟 Glow effect (outer light aura)
                         val glowOverlay = GradientDrawable().apply {
                             shape = GradientDrawable.RECTANGLE
                             gradientType = GradientDrawable.RADIAL_GRADIENT
@@ -528,15 +504,15 @@ class PlaylistActivity : AppCompatActivity() {
                                 ColorUtils.setAlphaComponent(vibrant, 100),
                                 Color.TRANSPARENT
                             )
-                            setGradientCenter(0.5f, 0.3f) // position glow (center/top)
+                            setGradientCenter(0.5f, 0.3f)
                         }
 
                         // 🧊 Combine layers
                         val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
-                        layerDrawable.setLayerInset(0, -50, -50, -50, -50) // glow extends beyond bounds
+                        layerDrawable.setLayerInset(0, -50, -50, -50, -50)
 
                         backgroundView.background = layerDrawable
-                        backgroundView.background.alpha = 230 // control overall transparency (0–255)
+                        backgroundView.background.alpha = 230
                     }
                 }
 
@@ -545,8 +521,7 @@ class PlaylistActivity : AppCompatActivity() {
                 }
             })
     }
-
-    fun enableEdgeToEdgeWithInsets(rootView: View) {
+    private fun enableEdgeToEdgeWithInsets(rootView: View) {
         val activity = rootView.context as ComponentActivity
         WindowCompat.setDecorFitsSystemWindows(activity.window, false)
 
@@ -555,7 +530,7 @@ class PlaylistActivity : AppCompatActivity() {
 
             rootView.setPadding(
                 rootView.paddingLeft,
-                systemBars.top,
+                rootView.paddingTop,
                 rootView.paddingRight,
                 systemBars.bottom
             )
@@ -579,5 +554,24 @@ class PlaylistActivity : AppCompatActivity() {
                 onEnd?.invoke()
             }
             .start()
+    }
+    private fun setStatusBarIconsTheme(activity: Activity) {
+        val window = activity.window
+        val decorView = window.decorView
+        val insetsController = WindowInsetsControllerCompat(window, decorView)
+
+        // Detect current theme
+        val isDarkTheme =
+            (activity.resources.configuration.uiMode
+                    and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+        // Set icon color automatically
+        if (isDarkTheme) {
+            // Light icons for dark theme
+            insetsController.isAppearanceLightStatusBars = false
+        } else {
+            // Dark icons for light theme
+            insetsController.isAppearanceLightStatusBars = false
+        }
     }
 }

@@ -19,12 +19,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatImageView
-import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.graphics.ColorUtils
-import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
 import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.GridLayoutManager
@@ -89,8 +87,12 @@ class Home : Fragment() {
             recentList.removeAll{it.id == song.id}
             recentList.add(0,song)
 
-            if (recentList.size > maxSize) if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                recentList.removeLast()
+            if (recentList.size > maxSize) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                    recentList.removeLast()
+                } else {
+                    recentList.removeAt(recentList.size - 1)
+                }
             }
 
             pref.edit { putString("recently_played", gson.toJson(recentList)) }
@@ -151,8 +153,11 @@ class Home : Fragment() {
 
     override fun onStart() {
         super.onStart()
-        val intent = Intent(requireContext(), MusicPlayerService::class.java)
-        requireContext().bindService(intent,connection, Context.BIND_AUTO_CREATE)
+        if (!bound) {
+            val serviceIntent = Intent(requireContext(), MusicPlayerService::class.java)
+            ContextCompat.startForegroundService(requireContext(), serviceIntent)
+            requireContext().bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
+        }
     }
 
     override fun onStop() {
@@ -281,44 +286,39 @@ class Home : Fragment() {
 
         recentPlayedAdapter.setOnItemClickListener(object : SongAdapter.OnItemClickListener {
             override fun omItemClick(position: Int) {
-                if (musicPlayerService != null) {
-                    val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
-                        action = MusicPlayerService.ACTION_PLAY_NEW
-                        putParcelableArrayListExtra("playlist", recentPlayedList)
-                        putExtra("index", position)
-                    }
-
-                    ContextCompat.startForegroundService(requireContext(), intent)
+                val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    putParcelableArrayListExtra("playlist", recentPlayedList)
+                    putExtra("index", position)
                 }
+
+                ContextCompat.startForegroundService(requireContext(), intent)
+                RecentlyPlayedManager.addToRecentlyPlayed(requireContext(),recentPlayedList[position])
             }
         })
 
         newSongAdapter.setOnItemClickListener(object : NewSongAdapter.OnItemClickListener {
             override fun omItemClick(position: Int) {
-                if (musicPlayerService != null) {
-                    val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
-                        action = MusicPlayerService.ACTION_PLAY_NEW
-                        putParcelableArrayListExtra("playlist", newSongsList)
-                        putExtra("index", position)
-                    }
-
-                    ContextCompat.startForegroundService(requireContext(), intent)
+                val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    putParcelableArrayListExtra("playlist", newSongsList)
+                    putExtra("index", position)
                 }
+
+                ContextCompat.startForegroundService(requireContext(), intent)
                 RecentlyPlayedManager.addToRecentlyPlayed(requireContext(),newSongsList[position])
             }
         })
 
         todayTrendingSongAdapter.setOnItemClickListener(object : SongAdapter.OnItemClickListener {
             override fun omItemClick(position: Int) {
-                if (musicPlayerService != null) {
-                    val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
-                        action = MusicPlayerService.ACTION_PLAY_NEW
-                        putParcelableArrayListExtra("playlist", todayTrendingSongList)
-                        putExtra("index", position)
-                    }
-
-                    ContextCompat.startForegroundService(requireContext(), intent)
+                val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    putParcelableArrayListExtra("playlist", todayTrendingSongList)
+                    putExtra("index", position)
                 }
+
+                ContextCompat.startForegroundService(requireContext(), intent)
                 RecentlyPlayedManager.addToRecentlyPlayed(requireContext(),todayTrendingSongList[position])
             }
         })
@@ -679,7 +679,7 @@ class Home : Fragment() {
             playPauseButton.setImageResource(R.drawable.playbutton)
         }
     }
-    fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
+    private fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
         Glide.with(imageView.context)
             .asBitmap()
             .load(imageUrl)
@@ -691,7 +691,6 @@ class Home : Fragment() {
                         val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
                         val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
 
-                        // 🌈 Base gradient (vibrant glass)
                         val baseGradient = GradientDrawable(
                             GradientDrawable.Orientation.TOP_BOTTOM,
                             intArrayOf(
@@ -703,7 +702,6 @@ class Home : Fragment() {
                             cornerRadius = 0f
                         }
 
-                        // 💎 Frosted glass overlay (soft white tint)
                         val glassOverlay = GradientDrawable().apply {
                             colors = intArrayOf(
                                 ColorUtils.setAlphaComponent(Color.WHITE, 90),
@@ -713,7 +711,6 @@ class Home : Fragment() {
                             orientation = GradientDrawable.Orientation.TOP_BOTTOM
                         }
 
-                        // 🌟 Glow effect (outer light aura)
                         val glowOverlay = GradientDrawable().apply {
                             shape = GradientDrawable.RECTANGLE
                             gradientType = GradientDrawable.RADIAL_GRADIENT
@@ -722,15 +719,14 @@ class Home : Fragment() {
                                 ColorUtils.setAlphaComponent(vibrant, 100),
                                 Color.TRANSPARENT
                             )
-                            setGradientCenter(0.5f, 0.3f) // position glow (center/top)
+                            setGradientCenter(0.5f, 0.3f)
                         }
 
-                        // 🧊 Combine layers
                         val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
-                        layerDrawable.setLayerInset(0, -50, -50, -50, -50) // glow extends beyond bounds
+                        layerDrawable.setLayerInset(0, -50, -50, -50, -50)
 
                         backgroundView.background = layerDrawable
-                        backgroundView.background.alpha = 230 // control overall transparency (0–255)
+                        backgroundView.background.alpha = 230
                     }
                 }
 
@@ -747,15 +743,6 @@ class Home : Fragment() {
                 shimmerFrameLayout.visibility = View.GONE
                 binding.constraintLayout.visibility = View.VISIBLE
             }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        val songItem = musicPlayerService?.currentSongLive?.value
-        val imageUrl = songItem?.image[1]?.url
-        if (!imageUrl.isNullOrEmpty()) {
-            setDynamicBackground(imageUrl, songImage, background)
         }
     }
     private fun getGreetingMessage(): String {

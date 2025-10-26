@@ -55,7 +55,7 @@
 
             <TextView
                 android:id="@+id/songNameText"
-                android:layout_width="150dp"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/merriweathersans_regular"
                 android:text="Song Name"
@@ -69,26 +69,29 @@
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:layout_marginTop="15dp"
+                android:layout_marginEnd="15dp"
                 android:layout_marginStart="12dp"
+                app:layout_constraintEnd_toStartOf="@id/appCompatImageView3"
                 app:layout_constraintStart_toEndOf="@id/cardView"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
                 android:id="@+id/artistNameText"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
                 android:fontFamily="@font/merriweathersans_semibold"
                 android:text="Atist Name"
                 android:textColor="#F8F9FA"
                 android:textSize="11sp"
-                android:layout_marginTop="3dp"
+                app:layout_constraintEnd_toEndOf="@+id/songNameText"
                 app:layout_constraintStart_toStartOf="@+id/songNameText"
                 app:layout_constraintTop_toBottomOf="@+id/songNameText" />
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/appCompatImageView3"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:layout_marginEnd="12dp"
                 app:layout_constraintBottom_toBottomOf="@+id/playButton"
                 app:layout_constraintTop_toTopOf="@+id/playButton"
@@ -98,8 +101,8 @@
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/appCompatImageView7"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:layout_marginEnd="20dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -109,14 +112,14 @@
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/playButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:layout_marginEnd="12dp"
                 app:layout_constraintBottom_toBottomOf="@+id/appCompatImageView7"
                 app:layout_constraintEnd_toStartOf="@id/appCompatImageView7"
                 app:layout_constraintTop_toTopOf="@+id/appCompatImageView7"
                 app:srcCompat="@drawable/playbutton"
-                app:tint="#34A853" />
+                app:tint="#F8F9FA" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.cardview.widget.CardView>

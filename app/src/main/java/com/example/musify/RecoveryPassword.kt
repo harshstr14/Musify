@@ -1,20 +1,19 @@
 package com.example.musify
 
+import android.app.Activity
 import android.content.res.Configuration
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.view.WindowInsetsController
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.example.musify.databinding.ActivityRecoveryPasswordBinding
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
@@ -31,24 +30,7 @@ class RecoveryPassword : AppCompatActivity() {
 
         enableEdgeToEdgeWithInsets(binding.root)
 
-        WindowCompat.setDecorFitsSystemWindows(window, true)
-        val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        val isDark = nightModeFlags == Configuration.UI_MODE_NIGHT_YES
-
-        window.statusBarColor = ContextCompat.getColor(
-            this,
-            if (isDark) R.color.status_bar_dark else R.color.status_bar_light
-        )
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.setSystemBarsAppearance(
-                if (isDark) 0 else WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-            )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val decor = window.decorView
-            decor.systemUiVisibility = if (isDark) 0 else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-        }
+        setStatusBarIconsTheme(this)
 
         binding.backArrowBtn.setOnClickListener {
             finish()
@@ -77,7 +59,7 @@ class RecoveryPassword : AppCompatActivity() {
             }
         }
     }
-    fun enableEdgeToEdgeWithInsets(rootView: View) {
+    private fun enableEdgeToEdgeWithInsets(rootView: View) {
         val activity = rootView.context as ComponentActivity
         WindowCompat.setDecorFitsSystemWindows(activity.window, false)
 
@@ -86,12 +68,31 @@ class RecoveryPassword : AppCompatActivity() {
 
             rootView.setPadding(
                 rootView.paddingLeft,
-                systemBars.top,
+                rootView.paddingTop,
                 rootView.paddingRight,
                 systemBars.bottom
             )
 
             insets
+        }
+    }
+    private fun setStatusBarIconsTheme(activity: Activity) {
+        val window = activity.window
+        val decorView = window.decorView
+        val insetsController = WindowInsetsControllerCompat(window, decorView)
+
+        // Detect current theme
+        val isDarkTheme =
+            (activity.resources.configuration.uiMode
+                    and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+        // Set icon color automatically
+        if (isDarkTheme) {
+            // Light icons for dark theme
+            insetsController.isAppearanceLightStatusBars = false
+        } else {
+            // Dark icons for light theme
+            insetsController.isAppearanceLightStatusBars = false
         }
     }
 }

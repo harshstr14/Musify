@@ -2,6 +2,7 @@ package com.example.musify
 
 import android.app.AlertDialog
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.graphics.Bitmap
@@ -37,6 +38,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
+import com.example.musify.Home.RecentlyPlayedManager
 import com.example.musify.databinding.ActivityPlaySongBinding
 import com.example.musify.service.MusicPlayerService
 import com.example.musify.songData.Album
@@ -101,8 +103,10 @@ class PlaySong : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        Intent(this, MusicPlayerService::class.java).also { intent ->
-            bindService(intent, connection, BIND_AUTO_CREATE)
+        if (!bound) {
+            val serviceIntent = Intent(this, MusicPlayerService::class.java)
+            ContextCompat.startForegroundService(this, serviceIntent)
+            bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
         }
     }
 
@@ -516,16 +520,14 @@ class PlaySong : AppCompatActivity() {
 
             suggestionSongAdapter.setOnItemClickListener(object : SuggestionSongAdapter.OnItemClickListener {
                 override fun onItemClick(position: Int) {
-                    if (musicService != null) {
-                        val intent = Intent(this@PlaySong, MusicPlayerService::class.java).apply {
-                            action = MusicPlayerService.ACTION_PLAY_NEW
-                            putParcelableArrayListExtra("playlist", songList)
-                            putExtra("index", position)
-                        }
-
-                        ContextCompat.startForegroundService(this@PlaySong, intent)
+                    val intent = Intent(this@PlaySong, MusicPlayerService::class.java).apply {
+                        action = MusicPlayerService.ACTION_PLAY_NEW
+                        putParcelableArrayListExtra("playlist", songList)
+                        putExtra("index", position)
                     }
-                    Home.RecentlyPlayedManager.addToRecentlyPlayed(this@PlaySong,songList[position])
+
+                    ContextCompat.startForegroundService(this@PlaySong, intent)
+                    RecentlyPlayedManager.addToRecentlyPlayed(this@PlaySong,songList[position])
                 }
             })
 
@@ -629,7 +631,7 @@ class PlaySong : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
     }
-    fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: View) {
+    private fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: View) {
         if (!isFinishing && !isDestroyed && imageView.isAttachedToWindow) {
             Glide.with(applicationContext)
                 .asBitmap()
@@ -642,7 +644,6 @@ class PlaySong : AppCompatActivity() {
                             val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
                             val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
 
-                            // 🌈 Base gradient (vibrant glass)
                             val baseGradient = GradientDrawable(
                                 GradientDrawable.Orientation.TOP_BOTTOM,
                                 intArrayOf(
@@ -654,7 +655,6 @@ class PlaySong : AppCompatActivity() {
                                 cornerRadius = 0f
                             }
 
-                            // 💎 Frosted glass overlay (soft white tint)
                             val glassOverlay = GradientDrawable().apply {
                                 colors = intArrayOf(
                                     ColorUtils.setAlphaComponent(Color.WHITE, 90),
@@ -664,7 +664,6 @@ class PlaySong : AppCompatActivity() {
                                 orientation = GradientDrawable.Orientation.TOP_BOTTOM
                             }
 
-                            // 🌟 Glow effect (outer light aura)
                             val glowOverlay = GradientDrawable().apply {
                                 shape = GradientDrawable.RECTANGLE
                                 gradientType = GradientDrawable.RADIAL_GRADIENT
@@ -673,15 +672,14 @@ class PlaySong : AppCompatActivity() {
                                     ColorUtils.setAlphaComponent(vibrant, 100),
                                     Color.TRANSPARENT
                                 )
-                                setGradientCenter(0.5f, 0.3f) // position glow (center/top)
+                                setGradientCenter(0.5f, 0.3f)
                             }
 
-                            // 🧊 Combine layers
                             val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
-                            layerDrawable.setLayerInset(0, -50, -50, -50, -50) // glow extends beyond bounds
+                            layerDrawable.setLayerInset(0, -50, -50, -50, -50)
 
                             backgroundView.background = layerDrawable
-                            backgroundView.background.alpha = 230 // control overall transparency (0–255)
+                            backgroundView.background.alpha = 230
                         }
 
                     }
@@ -726,7 +724,7 @@ class PlaySong : AppCompatActivity() {
             }
         }
     }
-    fun enableEdgeToEdgeWithInsets(rootView: View) {
+    private fun enableEdgeToEdgeWithInsets(rootView: View) {
         val activity = rootView.context as ComponentActivity
         WindowCompat.setDecorFitsSystemWindows(activity.window, false)
 
