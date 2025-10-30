@@ -2,7 +2,6 @@ package com.example.musify
 
 import android.app.AlertDialog
 import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.graphics.Bitmap
@@ -106,7 +105,7 @@ class PlaySong : AppCompatActivity() {
         if (!bound) {
             val serviceIntent = Intent(this, MusicPlayerService::class.java)
             ContextCompat.startForegroundService(this, serviceIntent)
-            bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
+            bindService(serviceIntent, connection, BIND_AUTO_CREATE)
         }
     }
 
@@ -264,14 +263,11 @@ class PlaySong : AppCompatActivity() {
         runOnUiThread {
             val imageUrl = if (song.image.size > 2) song.image[2].url else song.image.firstOrNull()?.url
             if (!imageUrl.isNullOrEmpty()) {
-                Picasso.get().load(imageUrl).into(binding.songImageView)
                 setDynamicBackground(song.image[1].url, binding.songImageView, binding.scrollView)
             } else {
                 binding.songImageView.setImageResource(R.drawable.playlist_image)
             }
 
-            binding.songNameText.text = Html.fromHtml(song.name.ifEmpty { "Unknown Song" }, Html.FROM_HTML_MODE_LEGACY)
-            binding.artistNameText.text = song.artists.firstOrNull()?.name ?: "Unknown Artist"
             binding.albumName.text = Html.fromHtml(song.album.name.ifEmpty { "Unknown Album" }, Html.FROM_HTML_MODE_LEGACY)
 
             if (song.album.id.isNotEmpty()) {
@@ -311,31 +307,24 @@ class PlaySong : AppCompatActivity() {
 
                         playlistRef.runTransaction(object : Transaction.Handler {
                             override fun doTransaction(currentData: MutableData): Transaction.Result {
-                                // Get current playlist map safely
-                                val playlist = (currentData.getValue(object : GenericTypeIndicator<Map<String, Any>>() {}) ?: emptyMap()).toMutableMap()
+                                val songsNode = currentData.child("Songs")
+                                val songs = (songsNode.getValue(object : GenericTypeIndicator<Map<String, Any>>() {}) ?: emptyMap())
+                                    .toMutableMap()
 
-                                // Get existing Songs (may be null initially)
-                                val songs = (playlist["Songs"] as? Map<String, Any?>)?.toMutableMap() ?: mutableMapOf()
-
-                                // ✅ If song already exists, don't commit changes
                                 if (songs.containsKey(song.id)) {
-                                    // No need to modify currentData → Transaction will treat it as no change
                                     return Transaction.abort()
                                 }
 
-                                // ✅ Add new song data
                                 songs[song.id] = mapOf(
                                     "id" to song.id,
                                     "name" to song.name
                                 )
 
-                                // ✅ Safely increment totalSongs (handle missing or wrong type)
-                                val totalSongs = (playlist["total Songs"] as? Number)?.toLong() ?: 0L
-                                playlist["total Songs"] = totalSongs + 1
+                                songsNode.value = songs
 
-                                // ✅ Apply updates
-                                playlist["Songs"] = songs
-                                currentData.value = playlist
+                                val totalSongsNode = currentData.child("total Songs")
+                                val totalSongs = (totalSongsNode.getValue(Long::class.java) ?: 0L)
+                                totalSongsNode.value = maxOf(0L, totalSongs + 1)
 
                                 return Transaction.success(currentData)
                             }
@@ -468,9 +457,18 @@ class PlaySong : AppCompatActivity() {
             val duration = song.optInt("duration")
 
             val downloadArray = song.optJSONArray("downloadUrl")
-            val downloadUrl = if (downloadArray != null && downloadArray.length() > 0) {
-                downloadArray.getJSONObject(2).optString("url")
-            } else ""
+            val download = mutableListOf<Download>()
+            if (downloadArray != null) {
+                for (k in 0 until downloadArray.length()) {
+                    val downloadObject = downloadArray.getJSONObject(k)
+                    download.add(
+                        Download(
+                            quality = downloadObject?.optString("quality") ?: "",
+                            url = downloadObject?.optString("url") ?: ""
+                        )
+                    )
+                }
+            }
 
             val imageArray = song.optJSONArray("image")
             val image = mutableListOf<Image>()
@@ -492,7 +490,7 @@ class PlaySong : AppCompatActivity() {
                 primaryArtists.getJSONObject(0).optString("name")
             } else ""
 
-            songList.add(SongItem(id, name, artistName, image,duration,downloadUrl))
+            songList.add(SongItem(id, name, artistName, image,duration,download))
         }
 
         runOnUiThread {
@@ -553,6 +551,16 @@ class PlaySong : AppCompatActivity() {
         musicService?.currentSongLive?.observe(this) { song ->
             if (song != null) {
                 val songID = song.id
+                val imageUrl = if (song.image.size > 2) song.image[2].url else song.image.firstOrNull()?.url
+                if (!imageUrl.isNullOrEmpty()) {
+                    Picasso.get().load(imageUrl).into(binding.songImageView)
+                } else {
+                    binding.songImageView.setImageResource(R.drawable.playlist_image)
+                }
+
+                binding.songNameText.text = Html.fromHtml(song.name.ifEmpty { "Unknown Song" }, Html.FROM_HTML_MODE_LEGACY)
+                binding.artistNameText.text = song.artist.ifEmpty { "Unknown Artist" }
+
                 fetchSongByID(songID)
                 updateFavouriteUI(song)
             }
@@ -681,7 +689,6 @@ class PlaySong : AppCompatActivity() {
                             backgroundView.background = layerDrawable
                             backgroundView.background.alpha = 230
                         }
-
                     }
 
                     override fun onLoadCleared(placeholder: Drawable?) {}

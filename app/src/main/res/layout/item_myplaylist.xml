@@ -54,10 +54,12 @@
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/threeDots"
         android:layout_width="wrap_content"
-        android:layout_height="20dp"
+        android:layout_height="wrap_content"
+        android:padding="12dp"
         app:srcCompat="@drawable/three_dots"
         android:rotation="90"
         app:tint="#34A853"
+        android:layout_marginEnd="-8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/materialCardView3"
         app:layout_constraintBottom_toBottomOf="@id/materialCardView3"/>

@@ -72,6 +72,8 @@ class MusicPlayerService : LifecycleService() {
     private val progressRefreshMs = 500L
     val isShuffle = MutableLiveData(false)
     val repeatMode = MutableLiveData(false)
+    private var currentAlbumArt: Bitmap? = null
+    private var currentArtSongId: String? = null
 
     private val progressRunnable = object : Runnable {
         override fun run() {
@@ -119,7 +121,9 @@ class MusicPlayerService : LifecycleService() {
 
                     val bitmap = BitmapFactory.decodeResource(resources, R.drawable.playlist)
                     updateMetadata(song, bitmap)
-                    updateNotification()
+                    CoroutineScope(Dispatchers.Main).launch {
+                        updateNotification()
+                    }
                 }
                 else if (state == Player.STATE_ENDED) {
                     next()
@@ -130,7 +134,9 @@ class MusicPlayerService : LifecycleService() {
                 isPlayingLive.postValue(isPlaying)
                 if (isPlaying) handler.post(progressRunnable) else handler.removeCallbacks(progressRunnable)
                 updatePlaybackState()
-                updateNotification()
+                CoroutineScope(Dispatchers.Main).launch {
+                    updateNotification()
+                }
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -248,9 +254,12 @@ class MusicPlayerService : LifecycleService() {
         Home.RecentlyPlayedManager.addToRecentlyPlayed(this,playlist[index])
     }
     private fun prepareAndPlay(song: SongItem) {
+        currentAlbumArt = null
+        currentArtSongId = null
+
         player.stop()
         player.clearMediaItems()
-        val mediaItem = MediaItem.fromUri(song.downloadUrl.toUri())
+        val mediaItem = MediaItem.fromUri(song.downloadUrl[1].url.toUri())
         player.setMediaItem(mediaItem)
         player.prepare()
         player.play()
@@ -353,8 +362,7 @@ class MusicPlayerService : LifecycleService() {
     }
     private fun startForegroundWithNotification(song: SongItem) {
         val placeholder = BitmapFactory.decodeResource(resources, R.drawable.playlist)
-        val placeholderBitmap = placeholder.copy(placeholder.config!!, false)
-        val notif = buildNotification(song, placeholderBitmap)
+        val notif = buildNotification(song, placeholder)
 
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -364,7 +372,19 @@ class MusicPlayerService : LifecycleService() {
             startForeground(NOTIFICATION_ID, notif)
         }
 
-        // Load real album art asynchronously
+        if (song.id == currentArtSongId && currentAlbumArt != null) {
+            val notif = buildNotification(song, currentAlbumArt!!)
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notif)
+            }
+            return
+        }
+
+        // 2️⃣ Load real album art in background
         CoroutineScope(Dispatchers.IO).launch {
             val bitmap = try {
                 if (song.image.size > 2 && song.image[2].url.isNotBlank()) {
@@ -373,26 +393,42 @@ class MusicPlayerService : LifecycleService() {
                         .resize(512, 512)
                         .centerCrop()
                         .get()
-                } else placeholder
+                } else {
+                    placeholder // fallback if no image
+                }
             } catch (e: Exception) {
-                Log.e("AlbumArt", "Error loading image", e)
+                Log.e("AlbumArt", "Error loading album art", e)
                 placeholder
             }
 
-            val updatedBitmap = bitmap.copy(bitmap.config!!, false)
-
+            // 3️⃣ Update metadata and notification on main thread
             withContext(Dispatchers.Main) {
-                updateMetadata(song,updatedBitmap)
+                currentAlbumArt = bitmap
+                currentArtSongId = song.id
 
-                // ✅ Update the existing foreground notification
-                val updatedNotif = buildNotification(song, updatedBitmap)
-                NotificationManagerCompat.from(this@MusicPlayerService)
-                    .notify(NOTIFICATION_ID, updatedNotif)
+                updateMetadata(song, bitmap)
+                val updatedNotif = buildNotification(song, bitmap)
+
+                val notificationManager =
+                    getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                notificationManager.notify(NOTIFICATION_ID, updatedNotif)
             }
         }
     }
     fun updateNotification() {
         val song = currentSongLive.value ?: return
+
+        if (song.id == currentArtSongId && currentAlbumArt != null) {
+            val notif = buildNotification(song, currentAlbumArt!!)
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notif)
+            }
+            return
+        }
 
         CoroutineScope(Dispatchers.IO).launch {
             val bitmap = try {
@@ -410,13 +446,14 @@ class MusicPlayerService : LifecycleService() {
                 BitmapFactory.decodeResource(resources, R.drawable.playlist)
             }
 
-            val updatedBitmap = bitmap.copy(bitmap.config!!, false)
-
             withContext(Dispatchers.Main) {
-                updateMetadata(song,updatedBitmap)
+                currentAlbumArt = bitmap
+                currentArtSongId = song.id
+
+                updateMetadata(song,bitmap)
 
                 // ✅ Update the notification WITHOUT calling startForeground again
-                val notif = buildNotification(song, updatedBitmap)
+                val notif = buildNotification(song, bitmap)
                 if (ActivityCompat.checkSelfPermission(
                         this@MusicPlayerService,
                         Manifest.permission.POST_NOTIFICATIONS
@@ -539,10 +576,6 @@ class MusicPlayerService : LifecycleService() {
         durationLive.postValue(duration.toInt())
         progressLive.postValue(position.toInt())
 
-        // Update MediaSession metadata
-        val bitmap = BitmapFactory.decodeResource(resources, R.drawable.playlist) // fallback
-        updateMetadata(song, bitmap)
-
         // Update playback state
         val playbackState = PlaybackStateCompat.Builder()
             .setActions(
@@ -560,8 +593,5 @@ class MusicPlayerService : LifecycleService() {
             )
             .build()
         mediaSession.setPlaybackState(playbackState)
-
-        // Update notification
-        updateNotification()
     }
 }

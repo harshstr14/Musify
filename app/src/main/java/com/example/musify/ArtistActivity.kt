@@ -37,6 +37,7 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.example.musify.Home.RecentlyPlayedManager
 import com.example.musify.databinding.ActivityArtistBinding
 import com.example.musify.service.MusicPlayerService
+import com.example.musify.songData.Download
 import com.example.musify.songData.Image
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -259,9 +260,18 @@ class ArtistActivity : AppCompatActivity() {
                 }
 
                 val downloadArray = songObject.optJSONArray("downloadUrl")
-                val downloadUrl = if (downloadArray != null && downloadArray.length() > 0) {
-                    downloadArray.getJSONObject(2).optString("url")
-                } else ""
+                val download = mutableListOf<Download>()
+                if (downloadArray != null) {
+                    for (k in 0 until downloadArray.length()) {
+                        val downloadObject = downloadArray.getJSONObject(k)
+                        download.add(
+                            Download(
+                                quality = downloadObject?.optString("quality") ?: "",
+                                url = downloadObject?.optString("url") ?: ""
+                            )
+                        )
+                    }
+                }
 
                 val artistsObj = songObject.optJSONObject("artists")
                 val primaryArtists = artistsObj?.optJSONArray("primary")
@@ -269,7 +279,7 @@ class ArtistActivity : AppCompatActivity() {
                     primaryArtists.getJSONObject(0).optString("name")
                 } else ""
 
-                topSongsList.add(SongItem(id, name, artistName, image, duration, downloadUrl))
+                topSongsList.add(SongItem(id, name, artistName, image, duration, download))
             }
         }
 
@@ -458,7 +468,7 @@ class ArtistActivity : AppCompatActivity() {
             binding.scrollView2.fadeIn()
         }
     }
-    fun formatCount(count: Long): String {
+    private fun formatCount(count: Long): String {
         return when {
             count >= 1_000_000_000 -> String.format(Locale.US,"%.1fB", count / 1_000_000_000.0)
             count >= 1_000_000 -> String.format(Locale.US,"%.1fM", count / 1_000_000.0)

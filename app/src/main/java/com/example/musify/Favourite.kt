@@ -33,6 +33,7 @@ import com.bumptech.glide.request.transition.Transition
 import com.example.musify.databinding.FragmentFavouriteBinding
 import com.example.musify.service.MusicPlayerService
 import com.example.musify.songData.Artists
+import com.example.musify.songData.Download
 import com.example.musify.songData.Image
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -398,9 +399,18 @@ class Favourite : Fragment() {
         }
 
         val downloadArray = songObject.optJSONArray("downloadUrl")
-        val downloadUrl = if (downloadArray != null && downloadArray.length() > 0) {
-            downloadArray.getJSONObject(2).optString("url")
-        } else ""
+        val download = mutableListOf<Download>()
+        if (downloadArray != null) {
+            for (k in 0 until downloadArray.length()) {
+                val downloadObject = downloadArray.getJSONObject(k)
+                download.add(
+                    Download(
+                        quality = downloadObject?.optString("quality") ?: "",
+                        url = downloadObject?.optString("url") ?: ""
+                    )
+                )
+            }
+        }
 
         val artistsObj = songObject.optJSONObject("artists")
         val primaryArtists = artistsObj?.optJSONArray("primary")
@@ -408,7 +418,7 @@ class Favourite : Fragment() {
             primaryArtists.getJSONObject(0).optString("name")
         } else ""
 
-        return SongItem(id, name, artistName, image, duration, downloadUrl)
+        return SongItem(id, name, artistName, image, duration, download)
     }
     fun fetchArtistsByIDs(artistsID: List<String>) {
         Thread {

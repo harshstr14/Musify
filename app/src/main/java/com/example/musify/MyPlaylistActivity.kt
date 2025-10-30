@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
@@ -26,28 +27,37 @@ import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
+import androidx.core.graphics.drawable.toDrawable
+import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.palette.graphics.Palette
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.example.musify.Home.RecentlyPlayedManager
 import com.example.musify.databinding.ActivityMyPlaylistBinding
 import com.example.musify.service.MusicPlayerService
+import com.example.musify.songData.Download
 import com.example.musify.songData.Image
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.GenericTypeIndicator
+import com.google.firebase.database.MutableData
+import com.google.firebase.database.Transaction
 import com.google.firebase.database.ValueEventListener
 import com.squareup.picasso.Picasso
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import kotlin.math.abs
 
 class MyPlaylistActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMyPlaylistBinding
@@ -212,6 +222,106 @@ class MyPlaylistActivity : AppCompatActivity() {
         binding.songRecyclerView.adapter = songAdapter
         binding.songRecyclerView.isNestedScrollingEnabled = false
 
+        if (name != "Favourites") {
+            val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(0,
+                ItemTouchHelper.LEFT) {
+                override fun onMove(recyclerView: RecyclerView,
+                                    viewHolder: RecyclerView.ViewHolder,
+                                    target: RecyclerView.ViewHolder
+                ): Boolean = false
+
+                override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                    val position = viewHolder.bindingAdapterPosition
+                    if (position != RecyclerView.NO_POSITION) {
+                        val songID = songList[position].id
+
+                        val playListRef = database.child(userID.toString())
+                            .child("Favourites")
+                            .child("MyPlaylist")
+                            .child(name)
+
+                        playListRef.runTransaction(object : Transaction.Handler {
+                            override fun doTransaction(currentData: MutableData): Transaction.Result {
+                                val songsNode = currentData.child("Songs")
+                                val songs = (songsNode.getValue(object : GenericTypeIndicator<Map<String, Any>>() {}) ?: emptyMap())
+                                    .toMutableMap()
+
+                                songs.remove(songID)
+
+                                songsNode.value = songs
+
+                                val totalSongsNode = currentData.child("total Songs")
+                                val totalSongs = (totalSongsNode.getValue(Long::class.java) ?: 0L)
+                                totalSongsNode.value = maxOf(0L, totalSongs - 1)
+
+                                return Transaction.success(currentData)
+                            }
+
+                            override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
+                                when {
+                                    error != null -> {
+                                        Toast.makeText(this@MyPlaylistActivity, "Error: ${error.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                    !committed -> {
+                                        Toast.makeText(this@MyPlaylistActivity, "Song not found in $name", Toast.LENGTH_SHORT).show()
+                                    }
+                                    else -> {
+                                        songList.removeAt(position)
+                                        songAdapter.notifyItemRemoved(position)
+                                        Toast.makeText(this@MyPlaylistActivity, "Song removed from $name", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        })
+                    }
+                }
+
+                override fun onChildDraw(
+                    c: Canvas,
+                    recyclerView: RecyclerView,
+                    viewHolder: RecyclerView.ViewHolder,
+                    dX: Float,
+                    dY: Float,
+                    actionState: Int,
+                    isCurrentlyActive: Boolean
+                ) {
+                    val itemView = viewHolder.itemView
+                    val background = "#E53935".toColorInt().toDrawable() // red shade
+                    val icon = ContextCompat.getDrawable(this@MyPlaylistActivity, R.drawable.delete)
+
+                    val iconMargin = (itemView.height - icon!!.intrinsicHeight) / 2
+                    val iconTop = itemView.top + (itemView.height - icon.intrinsicHeight) / 2
+                    val iconBottom = iconTop + icon.intrinsicHeight
+
+                    if (dX < 0) { // Swipe left
+                        val iconLeft = itemView.right - iconMargin - icon.intrinsicWidth
+                        val iconRight = itemView.right - iconMargin
+                        icon.setBounds(iconLeft, iconTop, iconRight, iconBottom)
+
+                        background.setBounds(
+                            itemView.right + dX.toInt(),
+                            itemView.top,
+                            itemView.right,
+                            itemView.bottom
+                        )
+                    } else {
+                        background.setBounds(0, 0, 0, 0)
+                    }
+
+                    background.draw(c)
+                    icon.draw(c)
+
+                    // Add fade-in effect for icon as user swipes
+                    val alpha = 1.0f - (abs(dX) / itemView.width.coerceAtMost(1).toFloat())
+                    icon.alpha = ((1 - alpha) * 255).toInt()
+
+                    super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+                }
+            })
+
+            itemTouchHelper.attachToRecyclerView(binding.songRecyclerView)
+        }
+
         songAdapter.setOnItemClickListener(object : SuggestionSongAdapter.OnItemClickListener {
             override fun onItemClick(position: Int) {
                 val intent = Intent(this@MyPlaylistActivity, MusicPlayerService::class.java).apply {
@@ -336,6 +446,7 @@ class MyPlaylistActivity : AppCompatActivity() {
                         }
 
                         ContextCompat.startForegroundService(this, intent)
+                        musicPlayerService?.updateNotification()
                     }
 
                     binding.shuffleButton.setOnClickListener {
@@ -385,9 +496,18 @@ class MyPlaylistActivity : AppCompatActivity() {
         }
 
         val downloadArray = songObject.optJSONArray("downloadUrl")
-        val downloadUrl = if (downloadArray != null && downloadArray.length() > 0) {
-            downloadArray.getJSONObject(2).optString("url")
-        } else ""
+        val download = mutableListOf<Download>()
+        if (downloadArray != null) {
+            for (k in 0 until downloadArray.length()) {
+                val downloadObject = downloadArray.getJSONObject(k)
+                download.add(
+                    Download(
+                        quality = downloadObject?.optString("quality") ?: "",
+                        url = downloadObject?.optString("url") ?: ""
+                    )
+                )
+            }
+        }
 
         val artistsObj = songObject.optJSONObject("artists")
         val primaryArtists = artistsObj?.optJSONArray("primary")
@@ -395,7 +515,7 @@ class MyPlaylistActivity : AppCompatActivity() {
             primaryArtists.getJSONObject(0).optString("name")
         } else ""
 
-        return SongItem(id, name, artistName, image, duration, downloadUrl)
+        return SongItem(id, name, artistName, image, duration, download)
     }
     private fun onDataLoaded() {
         if (songList.isEmpty()) {

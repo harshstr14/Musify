@@ -55,7 +55,7 @@
         android:background="@drawable/txtinputlayout_bg"
         android:gravity="center_vertical|center_horizontal"
         android:fontFamily="@font/merriweathersans_regular"
-        android:text="Create  Playlist"
+        android:text="Create Playlist"
         android:textSize="14sp"
         android:textColor="#F8F9FA"
         app:layout_constraintEnd_toEndOf="@+id/playlistEditText"

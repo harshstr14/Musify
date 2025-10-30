@@ -429,27 +429,36 @@ class MyPlaylist : Fragment() {
                     val oldPlaylistRef = playListRef.child(oldName)
                     val newPlaylistRef = playListRef.child(name)
 
-                    if (oldName != name) {
-                        oldPlaylistRef.get().addOnSuccessListener { snapshot ->
-                            if (!snapshot.exists()) {
+                    if (oldName == name) {
+                        Toast.makeText(requireContext(), "No changes made", Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
+
+                    newPlaylistRef.get().addOnSuccessListener { snapshot ->
+                        if (snapshot.exists()) {
+                            Toast.makeText(requireContext(), "Playlist already exists", Toast.LENGTH_SHORT).show()
+                            return@addOnSuccessListener
+                        }
+
+                        oldPlaylistRef.get().addOnSuccessListener { oldSnapshot ->
+                            if (!oldSnapshot.exists()) {
                                 Toast.makeText(requireContext(), "Playlist does not exist", Toast.LENGTH_SHORT).show()
                                 return@addOnSuccessListener
                             }
 
-                            val totalSongs = snapshot.child("total Songs").getValue(Int::class.java) ?: 0
-                            val songsData = snapshot.child("Songs").value
+                            val totalSongs = oldSnapshot.child("total Songs").getValue(Int::class.java) ?: 0
+                            val songsData = oldSnapshot.child("Songs").value
 
                             val data = mutableMapOf<String, Any>(
                                 "playList Name" to name,
                                 "total Songs" to totalSongs
                             )
 
-                            // Only include Songs if present
                             songsData?.let { data["Songs"] = it }
 
                             // Write new playlist first
                             newPlaylistRef.setValue(data).addOnSuccessListener {
-                                // Copy complete — now safely remove the old one
+                                // Then remove the old one
                                 oldPlaylistRef.removeValue().addOnSuccessListener {
                                     Toast.makeText(requireContext(), "Playlist renamed successfully", Toast.LENGTH_SHORT).show()
                                     loadPlaylists()
@@ -460,8 +469,6 @@ class MyPlaylist : Fragment() {
                                 Toast.makeText(requireContext(), "Failed to rename playlist", Toast.LENGTH_SHORT).show()
                             }
                         }
-                    } else {
-                        Toast.makeText(requireContext(), "Playlist Already exist", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -494,5 +501,10 @@ class MyPlaylist : Fragment() {
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         dialog.show()
+    }
+
+    override fun onResume() {
+        loadPlaylists()
+        super.onResume()
     }
 }

@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.squareup.picasso.Picasso
 import java.util.Locale
 
-class SuggestionSongAdapter(private val songList: List<SongItem>,private val onFavouriteClick: (SongItem) -> Unit)
+class SuggestionSongAdapter(private val songList: MutableList<SongItem>,private val onFavouriteClick: (SongItem) -> Unit)
     : RecyclerView.Adapter<SuggestionSongAdapter.SuggestionSongViewHolder>() {
 
     private lateinit var myListener: OnItemClickListener

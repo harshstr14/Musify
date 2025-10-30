@@ -38,6 +38,7 @@ import com.example.musify.Home.RecentlyPlayedManager
 import com.example.musify.databinding.ActivityAlbumBinding
 import com.example.musify.service.MusicPlayerService
 import com.example.musify.songData.Artists
+import com.example.musify.songData.Download
 import com.example.musify.songData.Image
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -285,9 +286,18 @@ class AlbumActivity : AppCompatActivity() {
                 }
 
                 val downloadArray = songObject.optJSONArray("downloadUrl")
-                val downloadUrl = if (downloadArray != null && downloadArray.length() > 0) {
-                    downloadArray.getJSONObject(2).optString("url")
-                } else ""
+                val download = mutableListOf<Download>()
+                if (downloadArray != null) {
+                    for (k in 0 until downloadArray.length()) {
+                        val downloadObject = downloadArray.getJSONObject(k)
+                        download.add(
+                            Download(
+                                quality = downloadObject?.optString("quality") ?: "",
+                                url = downloadObject?.optString("url") ?: ""
+                            )
+                        )
+                    }
+                }
 
                 val artistsObj = songObject.optJSONObject("artists")
                 val primaryArtists = artistsObj?.optJSONArray("primary")
@@ -295,7 +305,7 @@ class AlbumActivity : AppCompatActivity() {
                     primaryArtists.getJSONObject(0).optString("name")
                 } else ""
 
-                songList.add(SongItem(id, name, artistName, image, duration, downloadUrl))
+                songList.add(SongItem(id, name, artistName, image, duration, download))
             }
         }
 
@@ -420,6 +430,7 @@ class AlbumActivity : AppCompatActivity() {
                 }
 
                 ContextCompat.startForegroundService(this, intent)
+                musicPlayerService?.updateNotification()
             }
 
             binding.shuffleButton.setOnClickListener {
@@ -437,7 +448,7 @@ class AlbumActivity : AppCompatActivity() {
             }
         }
     }
-    fun formatDuration(totalSeconds: Int): String {
+    private fun formatDuration(totalSeconds: Int): String {
         val hours = totalSeconds / 3600
         val minutes = (totalSeconds % 3600) / 60
         val seconds = totalSeconds % 60
