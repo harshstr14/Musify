@@ -259,7 +259,7 @@ class MusicPlayerService : LifecycleService() {
 
         player.stop()
         player.clearMediaItems()
-        val mediaItem = MediaItem.fromUri(song.downloadUrl[1].url.toUri())
+        val mediaItem = MediaItem.fromUri(song.downloadUrl[4].url.toUri())
         player.setMediaItem(mediaItem)
         player.prepare()
         player.play()

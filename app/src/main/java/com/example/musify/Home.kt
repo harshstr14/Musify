@@ -280,7 +280,7 @@ class Home : Fragment() {
         binding.recyclerView4.adapter = topPLayListAdapter
 
         fetchPlaylistsByID("6689255","songs",newSongsList,newSongAdapter)
-        fetchPlaylistsByID("110858205","songs",todayTrendingSongList,todayTrendingSongAdapter)
+        fetchPlaylistsByID("946682072","songs",todayTrendingSongList,todayTrendingSongAdapter)
         fetchArtistsByQuery("top artists","results",artistsList,artistsAdapter)
         fetchAlbumByQuery("latest","results",topAlbumList,topAlbumAdapter)
         fetchPlayListByQuery("Top","results",topPlayList,topPLayListAdapter)

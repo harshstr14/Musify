@@ -221,7 +221,11 @@ class MyPlaylistActivity : AppCompatActivity() {
             LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
         binding.songRecyclerView.adapter = songAdapter
         binding.songRecyclerView.isNestedScrollingEnabled = false
-
+        binding.songRecyclerView.itemAnimator?.apply {
+            addDuration = 200
+            removeDuration = 300
+        }
+        
         if (name != "Favourites") {
             val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(0,
                 ItemTouchHelper.LEFT) {
@@ -311,7 +315,6 @@ class MyPlaylistActivity : AppCompatActivity() {
                     background.draw(c)
                     icon.draw(c)
 
-                    // Add fade-in effect for icon as user swipes
                     val alpha = 1.0f - (abs(dX) / itemView.width.coerceAtMost(1).toFloat())
                     icon.alpha = ((1 - alpha) * 255).toInt()
 

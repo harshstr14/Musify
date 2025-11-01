@@ -256,6 +256,7 @@ class MyPlaylist : Fragment() {
         val playListRef = database.child(userID).child("Favourites").child("MyPlaylist")
         val playlistList = mutableListOf<PlaylistData>()
 
+        binding.myPlayListRecyclerView.fadeOut()
         binding.progressBar.fadeIn()
 
         playListRef.addListenerForSingleValueEvent(object : ValueEventListener {

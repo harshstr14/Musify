@@ -19,8 +19,11 @@
         <item name="android:textColor">#F8F9FA</item>
     </style>
 
-    <style name="CustomPopupThemeOverlay" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+    <style name="CustomPopupThemeOverlay" parent="ThemeOverlay.Material3">
         <item name="popupMenuStyle">@style/CustomPopupMenuStyle</item>
+        <item name="android:textColor">#F8F9FA</item>
+        <item name="android:textColorPrimary">#F8F9FA</item>
+        <item name="android:textColorSecondary">#F8F9FA</item>
     </style>
 
 </resources>
