@@ -25,8 +25,12 @@ class SongAdapter(private val songList: List<SongItem>): RecyclerView.Adapter<So
 
     override fun onBindViewHolder(holder: SongViewHolder, position: Int) {
         Picasso.get().load(songList[position].image[1].url).into(holder.image)
+        val artistsName = songList[position].artist
+            .takeIf { it.isNotEmpty() }     // only proceed if list not empty
+            ?.joinToString(", ") { it.name } // join all artist names
+            ?: "Unknown Artist"
         holder.songName?.text = Html.fromHtml(songList[position].name,Html.FROM_HTML_MODE_LEGACY)
-        "by  ${songList[position].artist}".also { holder.artistName?.text = it }
+        "by  $artistsName".also { holder.artistName?.text = it }
     }
 
     override fun getItemCount(): Int {

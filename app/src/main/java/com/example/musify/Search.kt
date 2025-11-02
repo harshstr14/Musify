@@ -168,7 +168,7 @@ class Search : Fragment() {
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentSearchBinding.inflate(inflater,container,false)
         return binding.root
     }
@@ -535,12 +535,24 @@ class Search : Fragment() {
             }
 
             val artistsObj = songObject.optJSONObject("artists")
-            val primaryArtists = artistsObj?.optJSONArray("primary")
-            val artistName = if (primaryArtists != null && primaryArtists.length() > 0) {
-                primaryArtists.getJSONObject(0).optString("name")
-            } else ""
+            val primaryArray = artistsObj?.optJSONArray("primary")
+            val primaryArtists = mutableListOf<Artists>()
+            for (i in 0 until (primaryArray?.length() ?: 0)) {
+                val artistsObject = primaryArray?.getJSONObject(i)
+                val artistsImage = artistsObject?.optJSONArray("image")
 
-            list.add(SongItem(id, name, artistName, image, duration, download))
+                primaryArtists.add(
+                    Artists(
+                        id = artistsObject?.optString("id") ?: "",
+                        name = artistsObject?.optString("name") ?: "",
+                        role = artistsObject?.optString("role") ?: "",
+                        image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
+                        type = artistsObject?.optString("type") ?: ""
+                    )
+                )
+            }
+
+            list.add(SongItem(id, name, primaryArtists, image, duration, download))
         }
 
         activity?.runOnUiThread {
@@ -724,8 +736,13 @@ class Search : Fragment() {
         }
     }
     private fun updateMiniPlayer(songItem: SongItem?) {
+        val artistsName = songItem?.artist
+            ?.takeIf { it.isNotEmpty() }     // only proceed if list not empty
+            ?.joinToString(", ") { it.name } // join all artist names
+            ?: "Unknown Artist"              // fallback if null or empty
+
         songName.text = Html.fromHtml(songItem?.name ?: "", Html.FROM_HTML_MODE_LEGACY)
-        artistName.text = songItem?.artist
+        artistName.text = artistsName
         Picasso.get().load(songItem?.image[1]?.url).into(songImage)
         setDynamicBackground(songItem?.image[1]?.url ?: "" ,songImage,background)
 

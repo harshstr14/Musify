@@ -29,8 +29,11 @@ class SuggestionSongAdapter(private val songList: MutableList<SongItem>,private 
     override fun onBindViewHolder(holder: SuggestionSongViewHolder, position: Int) {
         Picasso.get().load(songList[position].image[1].url).into(holder.image)
         holder.songName?.text = Html.fromHtml(songList[position].name,Html.FROM_HTML_MODE_LEGACY)
-        val artistName = Html.fromHtml(songList[position].artist,Html.FROM_HTML_MODE_LEGACY)
-        "Artist • $artistName".also { holder.artistName?.text = it }
+        val artistsName = songList[position].artist
+            .takeIf { it.isNotEmpty() }     // only proceed if list not empty
+            ?.joinToString(", ") { it.name } // join all artist names
+            ?: "Unknown Artist"
+        "Artist • $artistsName".also { holder.artistName?.text = it }
         val duration = formatDuration(songList[position].duration)
         holder.duration?.text = duration
 

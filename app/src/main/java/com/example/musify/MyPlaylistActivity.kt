@@ -8,6 +8,8 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
@@ -27,8 +29,6 @@ import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
-import androidx.core.graphics.drawable.toDrawable
-import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -42,6 +42,7 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.example.musify.Home.RecentlyPlayedManager
 import com.example.musify.databinding.ActivityMyPlaylistBinding
 import com.example.musify.service.MusicPlayerService
+import com.example.musify.songData.Artists
 import com.example.musify.songData.Download
 import com.example.musify.songData.Image
 import com.google.firebase.auth.FirebaseAuth
@@ -57,6 +58,7 @@ import com.squareup.picasso.Picasso
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import kotlin.math.min
 import kotlin.math.abs
 
 class MyPlaylistActivity : AppCompatActivity() {
@@ -221,14 +223,17 @@ class MyPlaylistActivity : AppCompatActivity() {
             LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
         binding.songRecyclerView.adapter = songAdapter
         binding.songRecyclerView.isNestedScrollingEnabled = false
-        binding.songRecyclerView.itemAnimator?.apply {
-            addDuration = 200
-            removeDuration = 300
-        }
         
         if (name != "Favourites") {
             val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(0,
                 ItemTouchHelper.LEFT) {
+
+                private val deleteIcon = ContextCompat.getDrawable(this@MyPlaylistActivity,R.drawable.delete)!!
+                private val BackgroundColor = Paint().apply {
+                    color = Color.parseColor("#E53935")
+                    isAntiAlias = true
+                }
+
                 override fun onMove(recyclerView: RecyclerView,
                                     viewHolder: RecyclerView.ViewHolder,
                                     target: RecyclerView.ViewHolder
@@ -272,6 +277,9 @@ class MyPlaylistActivity : AppCompatActivity() {
                                     else -> {
                                         songList.removeAt(position)
                                         songAdapter.notifyItemRemoved(position)
+                                        binding.songRecyclerView.itemAnimator?.apply {
+                                            removeDuration = 250
+                                        }
                                         Toast.makeText(this@MyPlaylistActivity, "Song removed from $name", Toast.LENGTH_SHORT).show()
                                     }
                                 }
@@ -290,33 +298,35 @@ class MyPlaylistActivity : AppCompatActivity() {
                     isCurrentlyActive: Boolean
                 ) {
                     val itemView = viewHolder.itemView
-                    val background = "#E53935".toColorInt().toDrawable() // red shade
-                    val icon = ContextCompat.getDrawable(this@MyPlaylistActivity, R.drawable.delete)
+                    val itemHeight = itemView.height
 
-                    val iconMargin = (itemView.height - icon!!.intrinsicHeight) / 2
-                    val iconTop = itemView.top + (itemView.height - icon.intrinsicHeight) / 2
-                    val iconBottom = iconTop + icon.intrinsicHeight
+                    val backgroundLeft: Float
+                    val backgroundRight: Float
 
-                    if (dX < 0) { // Swipe left
-                        val iconLeft = itemView.right - iconMargin - icon.intrinsicWidth
-                        val iconRight = itemView.right - iconMargin
-                        icon.setBounds(iconLeft, iconTop, iconRight, iconBottom)
+                    if (dX < 0) {
+                        backgroundLeft = itemView.right + dX
+                        backgroundRight = itemView.right.toFloat()
 
-                        background.setBounds(
-                            itemView.right + dX.toInt(),
-                            itemView.top,
-                            itemView.right,
-                            itemView.bottom
-                        )
-                    } else {
-                        background.setBounds(0, 0, 0, 0)
+                        val rect = RectF(backgroundLeft, itemView.top.toFloat(), backgroundRight, itemView.bottom.toFloat())
+                        c.drawRoundRect(rect, 100f, 100f, BackgroundColor)
+
+                        val backgroundWidth = backgroundRight - backgroundLeft
+                        val iconWidth = deleteIcon.intrinsicWidth
+                        val iconHeight = deleteIcon.intrinsicHeight
+
+                        // Icon stays centered inside the pink background
+                        val iconLeft = backgroundRight - backgroundWidth / 2 - iconWidth / 2
+                        val iconRight = iconLeft + iconWidth
+                        val iconTop = itemView.top + (itemHeight - iconHeight) / 2
+                        val iconBottom = iconTop + iconHeight
+
+                        val progress = min(abs(dX) / itemView.width, 1f) // clamp 0–1
+                        val alpha = progress // opacity increases as swipe increases
+                        deleteIcon.alpha = (alpha * 255).toInt()
+
+                        deleteIcon.setBounds(iconLeft.toInt(), iconTop, iconRight.toInt(), iconBottom)
+                        deleteIcon.draw(c)
                     }
-
-                    background.draw(c)
-                    icon.draw(c)
-
-                    val alpha = 1.0f - (abs(dX) / itemView.width.coerceAtMost(1).toFloat())
-                    icon.alpha = ((1 - alpha) * 255).toInt()
 
                     super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
                 }
@@ -513,12 +523,24 @@ class MyPlaylistActivity : AppCompatActivity() {
         }
 
         val artistsObj = songObject.optJSONObject("artists")
-        val primaryArtists = artistsObj?.optJSONArray("primary")
-        val artistName = if (primaryArtists != null && primaryArtists.length() > 0) {
-            primaryArtists.getJSONObject(0).optString("name")
-        } else ""
+        val primaryArray = artistsObj?.optJSONArray("primary")
+        val primaryArtists = mutableListOf<Artists>()
+        for (i in 0 until (primaryArray?.length() ?: 0)) {
+            val artistsObject = primaryArray?.getJSONObject(i)
+            val artistsImage = artistsObject?.optJSONArray("image")
 
-        return SongItem(id, name, artistName, image, duration, download)
+            primaryArtists.add(
+                Artists(
+                    id = artistsObject?.optString("id") ?: "",
+                    name = artistsObject?.optString("name") ?: "",
+                    role = artistsObject?.optString("role") ?: "",
+                    image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
+                    type = artistsObject?.optString("type") ?: ""
+                )
+            )
+        }
+
+        return SongItem(id, name, primaryArtists, image, duration, download)
     }
     private fun onDataLoaded() {
         if (songList.isEmpty()) {
@@ -544,8 +566,13 @@ class MyPlaylistActivity : AppCompatActivity() {
         }.trim()
     }
     private fun updateMiniPlayer(songItem: SongItem?) {
+        val artistsName = songItem?.artist
+            ?.takeIf { it.isNotEmpty() }     // only proceed if list not empty
+            ?.joinToString(", ") { it.name } // join all artist names
+            ?: "Unknown Artist"              // fallback if null or empty
+
         songName.text = Html.fromHtml(songItem?.name ?: "", Html.FROM_HTML_MODE_LEGACY)
-        artistName.text = songItem?.artist
+        artistName.text = artistsName
         Picasso.get().load(songItem?.image[1]?.url).into(songImage)
         setDynamicBackground(songItem?.image[1]?.url ?: "",songImage,background)
     }

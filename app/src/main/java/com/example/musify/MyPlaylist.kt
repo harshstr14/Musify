@@ -120,7 +120,7 @@ class MyPlaylist : Fragment() {
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentMyPlaylistBinding.inflate(inflater,container,false)
         return binding.root
     }
@@ -324,8 +324,13 @@ class MyPlaylist : Fragment() {
             .start()
     }
     private fun updateMiniPlayer(songItem: SongItem?) {
+        val artistsName = songItem?.artist
+            ?.takeIf { it.isNotEmpty() }     // only proceed if list not empty
+            ?.joinToString(", ") { it.name } // join all artist names
+            ?: "Unknown Artist"              // fallback if null or empty
+
         songName.text = Html.fromHtml(songItem?.name ?: "", Html.FROM_HTML_MODE_LEGACY)
-        artistName.text = songItem?.artist
+        artistName.text = artistsName
         Picasso.get().load(songItem?.image[1]?.url).into(songImage)
         setDynamicBackground(songItem?.image[1]?.url ?: "" ,songImage,background)
 

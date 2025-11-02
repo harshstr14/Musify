@@ -485,12 +485,24 @@ class PlaySong : AppCompatActivity() {
             }
 
             val artistsObj = song.optJSONObject("artists")
-            val primaryArtists = artistsObj?.optJSONArray("primary")
-            val artistName = if (primaryArtists != null && primaryArtists.length() > 0) {
-                primaryArtists.getJSONObject(0).optString("name")
-            } else ""
+            val primaryArray = artistsObj?.optJSONArray("primary")
+            val primaryArtists = mutableListOf<Artists>()
+            for (i in 0 until (primaryArray?.length() ?: 0)) {
+                val artistsObject = primaryArray?.getJSONObject(i)
+                val artistsImage = artistsObject?.optJSONArray("image")
 
-            songList.add(SongItem(id, name, artistName, image,duration,download))
+                primaryArtists.add(
+                    Artists(
+                        id = artistsObject?.optString("id") ?: "",
+                        name = artistsObject?.optString("name") ?: "",
+                        role = artistsObject?.optString("role") ?: "",
+                        image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
+                        type = artistsObject?.optString("type") ?: ""
+                    )
+                )
+            }
+
+            songList.add(SongItem(id, name, primaryArtists, image,duration,download))
         }
 
         runOnUiThread {
@@ -558,8 +570,15 @@ class PlaySong : AppCompatActivity() {
                     binding.songImageView.setImageResource(R.drawable.playlist_image)
                 }
 
+                val artistsName = song.artist
+                    .takeIf { it.isNotEmpty() }     // only proceed if list not empty
+                    ?.joinToString(", ") { it.name } // join all artist names
+                    ?: "Unknown Artist"              // fallback if null or empty
+
                 binding.songNameText.text = Html.fromHtml(song.name.ifEmpty { "Unknown Song" }, Html.FROM_HTML_MODE_LEGACY)
-                binding.artistNameText.text = song.artist.ifEmpty { "Unknown Artist" }
+                binding.artistNameText.text = artistsName.ifEmpty { "Unknown Artist" }
+
+                Log.d("Artists Name : ", artistsName)
 
                 fetchSongByID(songID)
                 updateFavouriteUI(song)

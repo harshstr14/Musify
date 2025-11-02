@@ -24,7 +24,6 @@ import com.cloudinary.android.callback.ErrorInfo
 import com.cloudinary.android.callback.UploadCallback
 import com.example.musify.databinding.FragmentProfileBinding
 import com.example.musify.service.MusicPlayerService
-import com.facebook.shimmer.ShimmerFrameLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
@@ -49,7 +48,7 @@ class Profile : Fragment() {
             }
         }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentProfileBinding.inflate(inflater,container,false)
         return binding.root
     }
@@ -184,23 +183,37 @@ class Profile : Fragment() {
         }
 
         binding.logoutTextView.setOnClickListener {
-            val pref = requireContext().getSharedPreferences("Pref_Name",MODE_PRIVATE)
-            pref.edit { putBoolean("isLoggedIn", false)
-                apply() }
+            val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.logout_dialog,null)
+            val dialog = AlertDialog.Builder(requireContext())
+                .setView(dialogView)
+                .create()
 
-            googleSignInManager!!.signOut()
+            dialogView.findViewById<TextView>(R.id.btnRemove).setOnClickListener {
+                val pref = requireContext().getSharedPreferences("Pref_Name",MODE_PRIVATE)
+                pref.edit { putBoolean("isLoggedIn", false)
+                    apply() }
 
-            try {
-                val serviceIntent = Intent(requireContext(), MusicPlayerService::class.java)
-                requireContext().stopService(serviceIntent)
-            } catch (e: Exception) {
-                e.printStackTrace()
+                googleSignInManager!!.signOut()
+
+                try {
+                    val serviceIntent = Intent(requireContext(), MusicPlayerService::class.java)
+                    requireContext().stopService(serviceIntent)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
+                val intent = Intent(requireContext(), SignIn::class.java)
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                startActivity(intent)
+                activity?.finish()
             }
 
-            val intent = Intent(requireContext(), SignIn::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            startActivity(intent)
-            activity?.finish()
+            dialogView.findViewById<TextView>(R.id.btnCancle).setOnClickListener {
+                dialog.dismiss()
+            }
+
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+            dialog.show()
         }
     }
     private fun View.fadeIn(duration: Long = 300) {

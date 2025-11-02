@@ -506,6 +506,10 @@ class MusicPlayerService : LifecycleService() {
         }
 
         val songName = Html.fromHtml(song.name,Html.FROM_HTML_MODE_LEGACY)
+        val artistsName = song.artist
+            .takeIf { it.isNotEmpty() }     // only proceed if list not empty
+            ?.joinToString(", ") { it.name } // join all artist names
+            ?: "Unknown Artist"
         updateMetadata(song, bitmap)
 
         val playbackState = PlaybackStateCompat.Builder()
@@ -527,7 +531,7 @@ class MusicPlayerService : LifecycleService() {
 
         val notifBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(songName)
-            .setContentText(song.artist)
+            .setContentText(artistsName)
             .setSmallIcon(R.drawable.headset_image)
             .setLargeIcon(bitmap)
             .setContentIntent(openPending)
@@ -555,11 +559,15 @@ class MusicPlayerService : LifecycleService() {
     private fun updateMetadata(song: SongItem, bitmap: Bitmap) {
         val duration = if (::player.isInitialized && player.duration > 0) player.duration else song.duration.toLong()
         val songName = Html.fromHtml(song.name,Html.FROM_HTML_MODE_LEGACY)
+        val artistsName = song.artist
+            .takeIf { it.isNotEmpty() }     // only proceed if list not empty
+            ?.joinToString(", ") { it.name } // join all artist names
+            ?: "Unknown Artist"
 
         mediaSession.setMetadata(
             android.support.v4.media.MediaMetadataCompat.Builder()
                 .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_TITLE, songName.toString())
-                .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ARTIST, song.artist)
+                .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ARTIST, artistsName)
                 .putBitmap(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
                 .putLong(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_DURATION, duration)
                 .build()

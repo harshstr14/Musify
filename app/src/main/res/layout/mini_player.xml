@@ -84,6 +84,9 @@
                 android:text="Atist Name"
                 android:textColor="#F8F9FA"
                 android:textSize="11sp"
+                android:maxLines="1"
+                android:ellipsize="marquee"
+                android:singleLine="true"
                 app:layout_constraintEnd_toEndOf="@+id/songNameText"
                 app:layout_constraintStart_toStartOf="@+id/songNameText"
                 app:layout_constraintTop_toBottomOf="@+id/songNameText" />
