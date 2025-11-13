@@ -202,7 +202,7 @@ class Search : Fragment() {
         songAdapter.setOnItemClickListener(object : SuggestionSongAdapter.OnItemClickListener {
             override fun onItemClick(position: Int) {
                 val intent = Intent(requireContext(), MusicPlayerService::class.java).apply {
-                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    action = MusicPlayerService.ACTION_PLAY_SONG
                     putParcelableArrayListExtra("playlist", songList)
                     putExtra("index", position)
                 }

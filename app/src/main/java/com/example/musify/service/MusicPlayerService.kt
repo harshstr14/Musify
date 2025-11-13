@@ -18,6 +18,7 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.text.Html
 import android.util.Log
+import androidx.annotation.OptIn
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -31,6 +32,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Player.Listener
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.musify.Home
 import com.example.musify.PlaySong
@@ -49,6 +52,7 @@ class MusicPlayerService : LifecycleService() {
 
         // Action strings for notification intents
         const val ACTION_PLAY_NEW = "com.example.app.action.PLAY_NEW"
+        const val ACTION_PLAY_SONG = "com.example.app.action.PLAY_SONG"
         const val ACTION_PLAY = "com.example.app.ACTION_PLAY"
         const val ACTION_PAUSE = "com.example.app.ACTION_PAUSE"
         const val ACTION_NEXT = "com.example.app.ACTION_NEXT"
@@ -100,9 +104,20 @@ class MusicPlayerService : LifecycleService() {
         initPlayer()
         initMediaSession()
     }
+
+    @OptIn(UnstableApi::class)
     private fun initPlayer() {
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                50000,  // minBufferMs: total buffer duration before rebuffering (50s)
+                60000,  // maxBufferMs: total buffer size (60s)
+                2500,   // bufferForPlaybackMs: how much to buffer before starting playback (2.5s)
+                5000    // bufferForPlaybackAfterRebufferMs: after buffering again (5s)
+            )
+            .build()
         player = ExoPlayer.Builder(this)
             .setWakeMode(C.WAKE_MODE_LOCAL)
+            .setLoadControl(loadControl)
             .build()
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -204,6 +219,23 @@ class MusicPlayerService : LifecycleService() {
                     val index = intent.getIntExtra("index", 0)
                     if (!playlist.isNullOrEmpty() && index in playlist.indices) {
                         setPlaylist(playlist, index)
+                        // Only start foreground if a song is available
+                        currentSongLive.value?.let { song ->
+                            startForegroundWithNotification(song)
+                        }
+                    }
+                }
+                ACTION_PLAY_SONG -> {
+                    val playlist: ArrayList<SongItem>? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableArrayListExtra("playlist", SongItem::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableArrayListExtra("playlist")
+                    }
+
+                    val index = intent.getIntExtra("index", 0)
+                    if (!playlist.isNullOrEmpty() && index in playlist.indices) {
+                        play(playlist[index])
                         // Only start foreground if a song is available
                         currentSongLive.value?.let { song ->
                             startForegroundWithNotification(song)

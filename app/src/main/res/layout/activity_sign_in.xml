@@ -43,7 +43,7 @@
         android:fillViewport="true"
         android:overScrollMode="never"
         android:scrollbars="none"
-        android:layout_marginTop="45dp"
+        android:layout_marginTop="15dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/backArrowBtn">
 
@@ -57,6 +57,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/merriweathersans_semibold"
                 android:text="Sign In"
+                android:layout_marginTop="25dp"
                 android:layout_marginStart="32dp"
                 android:textColor="#F8F9FA"
                 android:textSize="24sp"
@@ -240,6 +241,7 @@
                 android:layout_height="wrap_content"
                 android:clickable="true"
                 android:focusable="true"
+                android:paddingVertical="35dp"
                 android:orientation="horizontal"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
