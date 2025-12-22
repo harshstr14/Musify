@@ -4,54 +4,25 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:background="@android:color/transparent">
 
     <androidx.cardview.widget.CardView
         android:id="@+id/backgroundView"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:layout_marginHorizontal="8dp"
+        android:layout_width="0dp"
+        android:layout_height="70dp"
         app:cardCornerRadius="14dp"
-        android:layout_marginBottom="5dp"
-        android:layout_marginTop="5dp"
-        android:backgroundTint="#1C1C1C"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="-85dp"
+        android:backgroundTint="#34A853"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintStart_toEndOf="@id/lottieAnimationView"
         app:layout_constraintTop_toTopOf="parent">
-
-        <androidx.appcompat.widget.AppCompatImageView
-            android:id="@+id/backGroundImageView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:tint="#AA000000"
-            android:tintMode="src_over"
-            android:scaleType="fitXY"/>
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
-
-            <androidx.cardview.widget.CardView
-                android:id="@+id/cardView"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:layout_marginStart="12dp"
-                android:background="@android:color/transparent"
-                app:cardCornerRadius="14dp"
-                app:cardElevation="0dp"
-                app:cardUseCompatPadding="false"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:strokeWidth="0dp">
-
-                <androidx.appcompat.widget.AppCompatImageView
-                    android:id="@+id/songImage"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:scaleType="fitXY" />
-            </androidx.cardview.widget.CardView>
 
             <TextView
                 android:id="@+id/songNameText"
@@ -68,11 +39,11 @@
                 android:scrollHorizontally="true"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
-                android:layout_marginTop="15dp"
+                android:layout_marginTop="12dp"
                 android:layout_marginEnd="15dp"
-                android:layout_marginStart="12dp"
+                android:layout_marginStart="58dp"
                 app:layout_constraintEnd_toStartOf="@id/appCompatImageView3"
-                app:layout_constraintStart_toEndOf="@id/cardView"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
@@ -126,5 +97,21 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.cardview.widget.CardView>
+
+    <com.airbnb.lottie.LottieAnimationView
+        android:id="@+id/lottieAnimationView"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:elevation="6dp"
+        android:background="@android:color/transparent"
+        android:layout_marginStart="-22dp"
+        android:layout_marginTop="-30dp"
+        android:layout_marginBottom="-30dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:lottie_speed="0.5"
+        app:lottie_loop="true"
+        app:lottie_rawRes="@raw/player_music" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

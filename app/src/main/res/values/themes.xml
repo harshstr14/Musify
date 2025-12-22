@@ -17,6 +17,7 @@
         <item name="android:popupBackground">@drawable/popup_bg</item>
         <item name="android:elevation">12dp</item>
         <item name="android:textColor">#F8F9FA</item>
+        <item name="android:textAppearance">@style/PopupMenuTextAppearance</item>
     </style>
 
     <style name="CustomPopupThemeOverlay" parent="ThemeOverlay.Material3">
@@ -24,6 +25,11 @@
         <item name="android:textColor">#F8F9FA</item>
         <item name="android:textColorPrimary">#F8F9FA</item>
         <item name="android:textColorSecondary">#F8F9FA</item>
+    </style>
+    
+    <style name="PopupMenuTextAppearance" parent="TextAppearance.Material3.BodyMedium">
+        <item name="fontFamily">@font/merriweathersans_semibold</item>
+        <item name="android:textColor">#F8F9FA</item>
     </style>
 
 </resources>

@@ -4,11 +4,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.drawable.Drawable
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.os.IBinder
 import android.text.Html
@@ -17,25 +12,26 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.widget.AppCompatImageView
-import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
-import androidx.core.graphics.ColorUtils
 import androidx.fragment.app.Fragment
-import androidx.palette.graphics.Palette
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.bumptech.glide.Glide
-import com.bumptech.glide.request.target.CustomTarget
+import com.airbnb.lottie.LottieAnimationView
 import com.example.musify.databinding.FragmentPlaylistBinding
 import com.example.musify.service.MusicPlayerService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import com.squareup.picasso.Picasso
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 class Playlist : Fragment() {
     private lateinit var binding: FragmentPlaylistBinding
@@ -46,12 +42,18 @@ class Playlist : Fragment() {
     private lateinit var miniPlayer: View
     private lateinit var songName: TextView
     private lateinit var artistName: TextView
-    private lateinit var songImage: AppCompatImageView
+    private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var playPauseButton: AppCompatImageView
     private lateinit var nextButton: AppCompatImageView
     private lateinit var prevButton: AppCompatImageView
-    private lateinit var background: AppCompatImageView
-    private lateinit var backgroundView: CardView
+    private lateinit var apiUrl: String
+    private val okHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -70,12 +72,25 @@ class Playlist : Fragment() {
                             miniPlayer.visibility = View.GONE
                         }
                         .start()
+                    val paddingBottomInDp = 12
+                    val paddingStartInDp = 25
+                    val scale = resources.displayMetrics.density
+                    val paddingStartInPx = (paddingStartInDp * scale).toInt()
+                    val paddingBottomInPx = (paddingBottomInDp * scale).toInt()
+                    binding.forYouRecyclerView.setPadding(paddingStartInPx,0,0,paddingBottomInPx)
                 } else {
                     if (miniPlayer.visibility != View.VISIBLE) {
                         // Prepare for animation
                         miniPlayer.translationY = miniPlayer.height.toFloat()
                         miniPlayer.alpha = 0f
                         miniPlayer.visibility = View.VISIBLE
+
+                        val paddingInDp = 90
+                        val paddingStartInDp = 25
+                        val scale = resources.displayMetrics.density
+                        val paddingStartInPx = (paddingStartInDp * scale).toInt()
+                        val paddingInPx = (paddingInDp * scale).toInt()
+                        binding.forYouRecyclerView.setPadding(paddingStartInPx,0,0,paddingInPx)
 
                         // Show with animation
                         miniPlayer.animate()
@@ -120,18 +135,18 @@ class Playlist : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        apiUrl = requireContext().getString(R.string.API)
+
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference().child("Users")
 
-        backgroundView = view.findViewById(R.id.backgroundView)
         miniPlayer = view.findViewById(R.id.miniPlayer)
         songName = view.findViewById(R.id.songNameText)
         artistName = view.findViewById(R.id.artistNameText)
-        songImage = view.findViewById(R.id.songImage)
+        lottieAnimationView = view.findViewById(R.id.lottieAnimationView)
         playPauseButton = view.findViewById(R.id.playButton)
         nextButton = view.findViewById(R.id.appCompatImageView7)
         prevButton = view.findViewById(R.id.appCompatImageView3)
-        background = view.findViewById(R.id.backGroundImageView)
 
         playPauseButton.setOnClickListener {
             if (musicPlayerService?.isPlayingLive?.value == true) {
@@ -203,51 +218,65 @@ class Playlist : Fragment() {
 
         fetchPlaylistsDataByQuery("top")
     }
-    fun fetchPlaylistsDataByQuery(query: String) {
-        Thread {
+    private fun fetchPlaylistsDataByQuery(query: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val client = OkHttpClient()
-                val request = Request.Builder()
-                    .url("https://jiosaavn-api-stableone.vercel.app/api/search/playlists?query=${query}&limit=40")
-                    .get()
-                    .build()
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val responseBody = response.body.string()
-                    parsePlaylistDataJson(responseBody)
-                } else {
-                    Log.e("SAAVN", "Error: ${response.code}")
+                val responseBody = withContext(Dispatchers.IO) {
+                    val request = Request.Builder()
+                        .url("$apiUrl/search/playlists?query=${query}&limit=40")
+                        .get()
+                        .build()
+
+                    val response = okHttpClient.newCall(request).execute()
+
+                    if (!response.isSuccessful) {
+                        Log.e("SAAVN", "Error: ${response.code}")
+                        throw Exception("Error: ${response.code}")
+                    }
+
+                    response.body.string()
                 }
+
+                if (responseBody.isEmpty()) {
+                    Toast.makeText(requireContext(), "Empty response", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                parsePlaylistDataJson(responseBody)
+
             } catch (e: Exception) {
                 Log.e("SAAVN", "Exception: ${e.message}")
             }
-        }.start()
+        }
     }
-    private fun parsePlaylistDataJson(jsonString: String) {
+    private suspend fun parsePlaylistDataJson(jsonString: String) {
         val playlistList = mutableListOf<DataItem>()
-        val json = JSONObject(jsonString)
-        val success = json.optBoolean("success", false)
-        if (!success) return
 
-        val data = json.getJSONObject("data")
-        val songsArray = data.getJSONArray("results")
+        withContext(Dispatchers.Default) {
+            val json = JSONObject(jsonString)
+            val success = json.optBoolean("success", false)
+            if (!success) return@withContext
 
-        for (i in 0 until songsArray.length()) {
-            val song = songsArray.getJSONObject(i)
+            val data = json.getJSONObject("data")
+            val songsArray = data.getJSONArray("results")
 
-            val id = song.optString("id")
-            val name = song.optString("name")
+            for (i in 0 until songsArray.length()) {
+                val song = songsArray.getJSONObject(i)
 
-            val imageArray = song.optJSONArray("image")
-            val imageUrl = if (imageArray != null && imageArray.length() > 0) {
-                imageArray.getJSONObject(1).optString("url")
+                val id = song.optString("id")
+                val name = song.optString("name")
 
-            } else ""
+                val imageArray = song.optJSONArray("image")
+                val imageUrl = if (imageArray != null && imageArray.length() > 0) {
+                    imageArray.getJSONObject(1).optString("url")
 
-            playlistList.add(DataItem(id, name, "", imageUrl))
+                } else ""
+
+                playlistList.add(DataItem(id, name, "", imageUrl))
+            }
         }
 
-        activity?.runOnUiThread {
+        withContext(Dispatchers.Main) {
             val playListAdapter = PlayListAdapter(playlistList)
             binding.forYouRecyclerView.layoutManager = GridLayoutManager(requireContext(),3,
                 GridLayoutManager.VERTICAL,false)
@@ -273,73 +302,18 @@ class Playlist : Fragment() {
             ?: "Unknown Artist"              // fallback if null or empty
 
         songName.text = Html.fromHtml(songItem?.name ?: "", Html.FROM_HTML_MODE_LEGACY)
-        artistName.text = artistsName
-        Picasso.get().load(songItem?.image[1]?.url).into(songImage)
-        setDynamicBackground(songItem?.image[1]?.url ?: "" ,songImage,background)
-
+        artistName.text = Html.fromHtml(artistsName,Html.FROM_HTML_MODE_LEGACY)
+//        Picasso.get().load(songItem?.image[1]?.url).into(songImage)
+//        setDynamicBackground(songItem?.image[1]?.url ?: "" ,songImage,background)
     }
     private fun updatePlayPauseIcon(isPlaying: Boolean) {
         if (isPlaying) {
             playPauseButton.setImageResource(R.drawable.pausebutton)
+            lottieAnimationView.playAnimation()
         } else {
             playPauseButton.setImageResource(R.drawable.playbutton)
+            lottieAnimationView.pauseAnimation()
         }
-    }
-    private fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
-        Glide.with(imageView.context)
-            .asBitmap()
-            .load(imageUrl)
-            .override(500, 500)
-            .into(object : CustomTarget<Bitmap>() {
-                override fun onResourceReady(resource: Bitmap, transition: com.bumptech.glide.request.transition.Transition<in Bitmap>?) {
-
-                    Palette.from(resource).generate { palette ->
-                        val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
-                        val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
-
-                        val baseGradient = GradientDrawable(
-                            GradientDrawable.Orientation.TOP_BOTTOM,
-                            intArrayOf(
-                                ColorUtils.setAlphaComponent(darkVibrant, 180),
-                                ColorUtils.setAlphaComponent(vibrant, 180)
-                            )
-                        ).apply {
-                            gradientType = GradientDrawable.LINEAR_GRADIENT
-                            cornerRadius = 0f
-                        }
-
-                        val glassOverlay = GradientDrawable().apply {
-                            colors = intArrayOf(
-                                ColorUtils.setAlphaComponent(Color.WHITE, 90),
-                                ColorUtils.setAlphaComponent(Color.WHITE, 20)
-                            )
-                            gradientType = GradientDrawable.LINEAR_GRADIENT
-                            orientation = GradientDrawable.Orientation.TOP_BOTTOM
-                        }
-
-                        val glowOverlay = GradientDrawable().apply {
-                            shape = GradientDrawable.RECTANGLE
-                            gradientType = GradientDrawable.RADIAL_GRADIENT
-                            gradientRadius = 700f
-                            colors = intArrayOf(
-                                ColorUtils.setAlphaComponent(vibrant, 100),
-                                Color.TRANSPARENT
-                            )
-                            setGradientCenter(0.5f, 0.3f)
-                        }
-
-                        val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
-                        layerDrawable.setLayerInset(0, -50, -50, -50, -50)
-
-                        backgroundView.background = layerDrawable
-                        backgroundView.background.alpha = 230
-                    }
-                }
-
-                override fun onLoadCleared(placeholder: Drawable?) {
-                    // Optional cleanup
-                }
-            })
     }
     private fun View.fadeIn(duration: Long = 300) {
         this.apply {

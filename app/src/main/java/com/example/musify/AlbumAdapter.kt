@@ -26,7 +26,7 @@ class AlbumAdapter(private val albumList: List<DataItem>): RecyclerView.Adapter<
     override fun onBindViewHolder(holder: AlbumViewHolder, position: Int) {
         Picasso.get().load(albumList[position].image).into(holder.image)
         holder.songName?.text = Html.fromHtml(albumList[position].name,Html.FROM_HTML_MODE_LEGACY)
-        "by  ${albumList[position].artist}".also { holder.artistName?.text = it }
+        "by  ${Html.fromHtml(albumList[position].artist,Html.FROM_HTML_MODE_LEGACY)}".also { holder.artistName?.text = it }
     }
 
     override fun getItemCount(): Int {

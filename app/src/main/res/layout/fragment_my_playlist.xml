@@ -94,7 +94,7 @@
             app:layout_constraintTop_toBottomOf="@id/materialCardView3"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/miniPlayer"/>
+            app:layout_constraintBottom_toBottomOf="parent"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/myPlayListRecyclerView"
@@ -104,7 +104,6 @@
             android:layout_marginTop="15dp"
             android:clipToPadding="false"
             android:orientation="vertical"
-            android:paddingBottom="12dp"
             android:visibility="gone"
             android:overScrollMode="never"
             android:scrollbars="none"
@@ -112,7 +111,7 @@
             tools:listitem="@layout/item_myplaylist"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/miniPlayer"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/materialCardView3" />
 
         <include layout="@layout/mini_player"
@@ -120,7 +119,8 @@
             android:visibility="gone"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
-
 </FrameLayout>

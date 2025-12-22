@@ -30,7 +30,7 @@ class NewSongAdapter(private val newSongList: List<SongItem>): RecyclerView.Adap
             ?.joinToString(", ") { it.name } // join all artist names
             ?: "Unknown Artist"
         holder.songName?.text = Html.fromHtml(newSongList[position].name,Html.FROM_HTML_MODE_LEGACY)
-        "by  $artistsName".also { holder.artistName?.text = it }
+        "by  ${Html.fromHtml(artistsName,Html.FROM_HTML_MODE_LEGACY)}".also { holder.artistName?.text = it }
     }
 
     override fun getItemCount(): Int {
@@ -44,7 +44,7 @@ class NewSongAdapter(private val newSongList: List<SongItem>): RecyclerView.Adap
 
         init {
             view.setOnClickListener {
-                listener.omItemClick(adapterPosition)
+                listener.omItemClick(bindingAdapterPosition)
             }
         }
     }

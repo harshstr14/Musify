@@ -5,14 +5,9 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.res.Configuration
-import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.drawable.Drawable
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.os.IBinder
 import android.text.Html
@@ -25,20 +20,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
-import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.ColorUtils
+import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.palette.graphics.Palette
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
-import com.bumptech.glide.request.target.CustomTarget
+import com.airbnb.lottie.LottieAnimationView
 import com.example.musify.Home.RecentlyPlayedManager
 import com.example.musify.databinding.ActivityMyPlaylistBinding
 import com.example.musify.service.MusicPlayerService
@@ -55,11 +48,15 @@ import com.google.firebase.database.MutableData
 import com.google.firebase.database.Transaction
 import com.google.firebase.database.ValueEventListener
 import com.squareup.picasso.Picasso
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
-import kotlin.math.min
+import java.util.concurrent.TimeUnit
 import kotlin.math.abs
+import kotlin.math.min
 
 class MyPlaylistActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMyPlaylistBinding
@@ -70,14 +67,20 @@ class MyPlaylistActivity : AppCompatActivity() {
     private lateinit var miniPlayer: View
     private lateinit var songName: TextView
     private lateinit var artistName: TextView
-    private lateinit var songImage: AppCompatImageView
+    private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var playPauseButton: AppCompatImageView
     private lateinit var nextButton: AppCompatImageView
     private lateinit var prevButton: AppCompatImageView
-    private lateinit var background: AppCompatImageView
-    private lateinit var backgroundView: CardView
     private val songList = ArrayList<SongItem>()
     private lateinit var songAdapter: SuggestionSongAdapter
+    private lateinit var apiUrl: String
+    private val okHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -97,12 +100,21 @@ class MyPlaylistActivity : AppCompatActivity() {
                             miniPlayer.visibility = View.GONE
                         }
                         .start()
+                    val paddingInDp = 10
+                    val scale = resources.displayMetrics.density
+                    val paddingInPx = (paddingInDp * scale).toInt()
+                    binding.constraintLayout0.setPadding(0,0,0,paddingInPx)
                 } else {
                     if (miniPlayer.visibility != View.VISIBLE) {
                         // Prepare for animation
                         miniPlayer.translationY = miniPlayer.height.toFloat()
                         miniPlayer.alpha = 0f
                         miniPlayer.visibility = View.VISIBLE
+
+                        val paddingInDp = 90
+                        val scale = resources.displayMetrics.density
+                        val paddingInPx = (paddingInDp * scale).toInt()
+                        binding.constraintLayout0.setPadding(0,0,0,paddingInPx)
 
                         // Show with animation
                         miniPlayer.animate()
@@ -152,6 +164,8 @@ class MyPlaylistActivity : AppCompatActivity() {
 
         setStatusBarIconsTheme(this)
 
+        apiUrl = getString(R.string.API)
+
         binding.progressBar.fadeIn()
         binding.scrollView.fadeOut()
 
@@ -159,15 +173,13 @@ class MyPlaylistActivity : AppCompatActivity() {
             finish()
         }
 
-        backgroundView = findViewById(R.id.backgroundView)
         miniPlayer = findViewById(R.id.miniPlayer)
         songName = findViewById(R.id.songNameText)
         artistName = findViewById(R.id.artistNameText)
-        songImage = findViewById(R.id.songImage)
+        lottieAnimationView = findViewById(R.id.lottieAnimationView)
         playPauseButton = findViewById(R.id.playButton)
         nextButton = findViewById(R.id.appCompatImageView7)
         prevButton = findViewById(R.id.appCompatImageView3)
-        background = findViewById(R.id.backGroundImageView)
 
         playPauseButton.setOnClickListener {
             if (musicPlayerService?.isPlayingLive?.value == true) {
@@ -230,7 +242,7 @@ class MyPlaylistActivity : AppCompatActivity() {
 
                 private val deleteIcon = ContextCompat.getDrawable(this@MyPlaylistActivity,R.drawable.delete)!!
                 private val BackgroundColor = Paint().apply {
-                    color = Color.parseColor("#E53935")
+                    color = "#E53935".toColorInt()
                     isAntiAlias = true
                 }
 
@@ -367,120 +379,132 @@ class MyPlaylistActivity : AppCompatActivity() {
                     }
                 }
             } else {
-                binding.imageView.setImageResource(R.drawable.myplaylist)
-                val playListRef = database.child(userID).child("Favourites").child("MyPlaylist")
-                playListRef.child(name).child("Songs").get().addOnSuccessListener { snapshot ->
-                    if (snapshot.exists()) {
-                        val songIDList = ArrayList<String>()
-                        for (songSnap in snapshot.children) {
-                            val songID = songSnap.child("id").getValue(String::class.java)
-                            if (songID != null) songIDList.add(songID)
-                        }
+                val playListRef = database.child(userID).child("Favourites")
+                    .child("MyPlaylist").child(name)
 
-                        songList.clear()
-                        if (songIDList.isEmpty()) onDataLoaded() else fetchSongsByIDs(songIDList)
-                    } else {
+                playListRef.get().addOnSuccessListener { snapshot ->
+                    if (!snapshot.exists()) {
                         onDataLoaded()
+                        return@addOnSuccessListener
                     }
+
+                    val imageUrl = snapshot.child("imageUrl").getValue(String::class.java) ?: ""
+                    if (imageUrl != "") {
+                        Picasso.get().load(imageUrl).into(binding.imageView)
+                    } else {
+                        binding.imageView.setImageResource(R.drawable.myplaylist)
+                    }
+
+                    val songsSnapshot = snapshot.child("Songs")
+                    val songIDList = ArrayList<String>()
+                    for (songSnap in songsSnapshot.children) {
+                        val songID = songSnap.child("id").getValue(String::class.java)
+                        if (songID != null) songIDList.add(songID)
+                    }
+
+                    songList.clear()
+                    if (songIDList.isEmpty()) onDataLoaded() else fetchSongsByIDs(songIDList)
                 }
             }
         }
     }
-    fun fetchSongsByIDs(songIDs: List<String>) {
-        Thread {
-            val client = OkHttpClient()
-            val tempList = mutableListOf<SongItem>()
+    private fun fetchSongsByIDs(songIDs: List<String>) {
+        lifecycleScope.launch {
+            val tempList = withContext(Dispatchers.IO) {
+                val list = mutableListOf<SongItem>()
 
-            try {
-                for (songID in songIDs) {
-                    val request = Request.Builder()
-                        .url("https://jiosaavn-api-stableone.vercel.app/api/songs/$songID")
-                        .get()
-                        .build()
+                try {
+                    for (songID in songIDs) {
 
-                    val response = client.newCall(request).execute()
-                    if (response.isSuccessful) {
-                        val responseBody = response.body.string()
-                        if (responseBody.isNotEmpty()) {
-                            val songItem = parseSongJson(responseBody)
-                            if (songItem != null) {
-                                tempList.add(songItem)
+                        val request = Request.Builder()
+                            .url("$apiUrl/songs/$songID")
+                            .get()
+                            .build()
+
+                        val response = okHttpClient.newCall(request).execute()
+
+                        if (response.isSuccessful) {
+                            val responseBody = response.body.string()
+
+                            if (responseBody.isNotEmpty()) {
+                                val songItem = parseSongJson(responseBody)
+                                if (songItem != null) {
+                                    list.add(songItem)
+                                } else {
+                                    Log.e("SAAVN_PARSE", "Failed to parse song for ID: $songID")
+                                }
                             } else {
-                                Log.e("SAAVN_PARSE", "Failed to parse song for ID: $songID")
+                                Log.e("SAAVN", "Empty response for ID: $songID")
                             }
                         } else {
-                            Log.e("SAAVN", "Empty response for ID: $songID")
+                            Log.e("SAAVN", "Error: ${response.code}")
                         }
-                    } else {
-                        Log.e("SAAVN", "Error: ${response.code}")
                     }
+                } catch (e: Exception) {
+                    Log.e("SAAVN", "Exception: ${e.message}", e)
                 }
 
-                Log.d("SAAVN", "Fetched ${tempList.size} songs")
-
-                runOnUiThread {
-                    songList.clear()
-                    songList.addAll(tempList)
-                    songAdapter.notifyDataSetChanged()
-
-                    val totalSongs = songList.size
-                    val totalDuration = songList.sumOf { it.duration }
-                    "Songs : $totalSongs".also { binding.totalSongText.text = it }
-                    binding.durationText.text = formatDuration(totalDuration)
-
-                    val userID = auth.currentUser?.uid
-                    if (userID == null) {
-                        Log.e("FAV", "User not logged in")
-                        return@runOnUiThread
-                    }
-
-                    val favSongRef = database.child(userID).child("Favourites").child("Songs")
-
-                    favSongRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(snapshot: DataSnapshot) {
-                            val favoriteIds = snapshot.children.mapNotNull { it.key }
-                            songList.forEach { song -> song.isFav = favoriteIds.contains(song.id) }
-                            songAdapter.notifyDataSetChanged()
-                        }
-
-                        override fun onCancelled(error: DatabaseError) {
-                            Log.e("FAV", "Error loading favourites", error.toException())
-                        }
-                    })
-                    onDataLoaded()
-
-                    val anim = AnimationUtils.loadAnimation(this,R.anim.nav_item_click)
-
-                    binding.playButtonIcon.setOnClickListener {
-                        binding.playButtonIcon.startAnimation(anim)
-                        val intent = Intent(this, MusicPlayerService::class.java).apply {
-                            action = MusicPlayerService.ACTION_PLAY_NEW
-                            putParcelableArrayListExtra("playlist", songList)
-                        }
-
-                        ContextCompat.startForegroundService(this, intent)
-                        musicPlayerService?.updateNotification()
-                    }
-
-                    binding.shuffleButton.setOnClickListener {
-                        Toast.makeText(this,"Playing with Shuffle", Toast.LENGTH_SHORT).show()
-                        val intent = Intent(this, MusicPlayerService::class.java).apply {
-                            action = MusicPlayerService.ACTION_PLAY_NEW
-                            putParcelableArrayListExtra("playlist", songList)
-                        }
-
-                        ContextCompat.startForegroundService(this, intent)
-
-                        binding.shuffleButton.startAnimation(anim)
-                        musicPlayerService?.updateNotification()
-                        musicPlayerService?.isShuffle?.value = !(musicPlayerService?.isShuffle?.value ?: false)
-                    }
-                }
-
-            } catch (e: Exception) {
-                Log.e("SAAVN", "Exception: ${e.message}", e)
+                list
             }
-        }.start()
+
+            songList.clear()
+            songList.addAll(tempList)
+            songAdapter.notifyDataSetChanged()
+
+            val totalSongs = songList.size
+            val totalDuration = songList.sumOf { it.duration }
+            "Songs : $totalSongs".also { binding.totalSongText.text = it }
+            binding.durationText.text = formatDuration(totalDuration)
+
+            val userID = auth.currentUser?.uid
+            if (userID == null) {
+                Log.e("FAV", "User not logged in")
+                return@launch
+            }
+
+            val favSongRef = database.child(userID).child("Favourites").child("Songs")
+
+            favSongRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val favoriteIds = snapshot.children.mapNotNull { it.key }.toSet()
+                    songList.forEach { song -> song.isFav = favoriteIds.contains(song.id) }
+                    songAdapter.notifyDataSetChanged()
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("FAV", "Error loading favourites", error.toException())
+                }
+            })
+
+            onDataLoaded()
+
+            val anim = AnimationUtils.loadAnimation(this@MyPlaylistActivity,R.anim.nav_item_click)
+
+            binding.playButtonIcon.setOnClickListener {
+                binding.playButtonIcon.startAnimation(anim)
+                val intent = Intent(this@MyPlaylistActivity, MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    putParcelableArrayListExtra("playlist", songList)
+                }
+
+                ContextCompat.startForegroundService(this@MyPlaylistActivity, intent)
+                musicPlayerService?.updateNotification()
+            }
+
+            binding.shuffleButton.setOnClickListener {
+                Toast.makeText(this@MyPlaylistActivity,"Playing with Shuffle", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this@MyPlaylistActivity, MusicPlayerService::class.java).apply {
+                    action = MusicPlayerService.ACTION_PLAY_NEW
+                    putParcelableArrayListExtra("playlist", songList)
+                }
+
+                ContextCompat.startForegroundService(this@MyPlaylistActivity, intent)
+
+                binding.shuffleButton.startAnimation(anim)
+                musicPlayerService?.updateNotification()
+                musicPlayerService?.isShuffle?.value = !(musicPlayerService?.isShuffle?.value ?: false)
+            }
+        }
     }
     private fun parseSongJson(jsonString: String): SongItem? {
         val json = JSONObject(jsonString)
@@ -572,72 +596,18 @@ class MyPlaylistActivity : AppCompatActivity() {
             ?: "Unknown Artist"              // fallback if null or empty
 
         songName.text = Html.fromHtml(songItem?.name ?: "", Html.FROM_HTML_MODE_LEGACY)
-        artistName.text = artistsName
-        Picasso.get().load(songItem?.image[1]?.url).into(songImage)
-        setDynamicBackground(songItem?.image[1]?.url ?: "",songImage,background)
+        artistName.text = Html.fromHtml(artistsName,Html.FROM_HTML_MODE_LEGACY)
+//        Picasso.get().load(songItem?.image[1]?.url).into(songImage)
+//        setDynamicBackground(songItem?.image[1]?.url ?: "",songImage,background)
     }
     private fun updatePlayPauseIcon(isPlaying: Boolean) {
         if (isPlaying) {
             playPauseButton.setImageResource(R.drawable.pausebutton)
+            lottieAnimationView.playAnimation()
         } else {
             playPauseButton.setImageResource(R.drawable.playbutton)
+            lottieAnimationView.pauseAnimation()
         }
-    }
-    private fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
-        Glide.with(imageView.context)
-            .asBitmap()
-            .load(imageUrl)
-            .override(500, 500)
-            .into(object : CustomTarget<Bitmap>() {
-                override fun onResourceReady(resource: Bitmap, transition: com.bumptech.glide.request.transition.Transition<in Bitmap>?) {
-
-                    Palette.from(resource).generate { palette ->
-                        val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
-                        val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
-
-                        val baseGradient = GradientDrawable(
-                            GradientDrawable.Orientation.TOP_BOTTOM,
-                            intArrayOf(
-                                ColorUtils.setAlphaComponent(darkVibrant, 180),
-                                ColorUtils.setAlphaComponent(vibrant, 180)
-                            )
-                        ).apply {
-                            gradientType = GradientDrawable.LINEAR_GRADIENT
-                            cornerRadius = 0f
-                        }
-
-                        val glassOverlay = GradientDrawable().apply {
-                            colors = intArrayOf(
-                                ColorUtils.setAlphaComponent(Color.WHITE, 90),
-                                ColorUtils.setAlphaComponent(Color.WHITE, 20)
-                            )
-                            gradientType = GradientDrawable.LINEAR_GRADIENT
-                            orientation = GradientDrawable.Orientation.TOP_BOTTOM
-                        }
-
-                        val glowOverlay = GradientDrawable().apply {
-                            shape = GradientDrawable.RECTANGLE
-                            gradientType = GradientDrawable.RADIAL_GRADIENT
-                            gradientRadius = 700f
-                            colors = intArrayOf(
-                                ColorUtils.setAlphaComponent(vibrant, 100),
-                                Color.TRANSPARENT
-                            )
-                            setGradientCenter(0.5f, 0.3f)
-                        }
-
-                        val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
-                        layerDrawable.setLayerInset(0, -50, -50, -50, -50)
-
-                        backgroundView.background = layerDrawable
-                        backgroundView.background.alpha = 230
-                    }
-                }
-
-                override fun onLoadCleared(placeholder: Drawable?) {
-                    // Optional cleanup
-                }
-            })
     }
     private fun View.fadeIn(duration: Long = 300) {
         this.apply {

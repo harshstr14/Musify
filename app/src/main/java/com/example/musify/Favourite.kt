@@ -4,11 +4,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.drawable.Drawable
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.os.IBinder
 import android.text.Html
@@ -19,17 +14,13 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.AppCompatImageView
-import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.ColorUtils
 import androidx.fragment.app.Fragment
-import androidx.palette.graphics.Palette
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.bumptech.glide.Glide
-import com.bumptech.glide.request.target.CustomTarget
-import com.bumptech.glide.request.transition.Transition
+import com.airbnb.lottie.LottieAnimationView
 import com.example.musify.databinding.FragmentFavouriteBinding
 import com.example.musify.service.MusicPlayerService
 import com.example.musify.songData.Artists
@@ -41,10 +32,13 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.squareup.picasso.Picasso
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 class Favourite : Fragment() {
     private lateinit var binding: FragmentFavouriteBinding
@@ -55,12 +49,10 @@ class Favourite : Fragment() {
     private lateinit var miniPlayer: View
     private lateinit var songName: TextView
     private lateinit var artistName: TextView
-    private lateinit var songImage: AppCompatImageView
     private lateinit var playPauseButton: AppCompatImageView
     private lateinit var nextButton: AppCompatImageView
     private lateinit var prevButton: AppCompatImageView
-    private lateinit var background: AppCompatImageView
-    private lateinit var backgroundView: CardView
+    private lateinit var lottieAnimationView: LottieAnimationView
     private val songList = ArrayList<SongItem>()
     private val artistsList = ArrayList<Artists>()
     private val albumsList = ArrayList<DataItem>()
@@ -74,6 +66,14 @@ class Favourite : Fragment() {
     private var albumsLoaded = false
     private var playlistsLoaded = false
     private var category = "songs"
+    private lateinit var apiUrl: String
+    private val okHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -92,12 +92,39 @@ class Favourite : Fragment() {
                             miniPlayer.visibility = View.GONE
                         }
                         .start()
+                    val paddingInDp = 12
+                    val paddingStartInDpArtists = 35
+                    val paddingStartInDpAlbums = 25
+                    val paddingStartInDpPlaylist = 25
+                    val scale = resources.displayMetrics.density
+                    val paddingStartInPxPlaylists = (paddingStartInDpPlaylist * scale).toInt()
+                    val paddingStartInPxAlbums = (paddingStartInDpAlbums * scale).toInt()
+                    val paddingStartInPxArtists = (paddingStartInDpArtists * scale).toInt()
+                    val paddingInPx = (paddingInDp * scale).toInt()
+                    binding.likedSongRecyclerView.setPadding(0,0,0,paddingInPx)
+                    binding.artistsRecyclerView.setPadding(paddingStartInPxArtists,0,0,paddingInPx)
+                    binding.playListRecyclerView.setPadding(paddingStartInPxPlaylists,0,0,paddingInPx)
+                    binding.albumsRecyclerView.setPadding(paddingStartInPxAlbums,0,0,paddingInPx)
                 } else {
                     if (miniPlayer.visibility != View.VISIBLE) {
                         // Prepare for animation
                         miniPlayer.translationY = miniPlayer.height.toFloat()
                         miniPlayer.alpha = 0f
                         miniPlayer.visibility = View.VISIBLE
+
+                        val paddingInDp = 90
+                        val paddingStartInDpArtists = 35
+                        val paddingStartInDpAlbums = 25
+                        val paddingStartInDpPlaylist = 25
+                        val scale = resources.displayMetrics.density
+                        val paddingStartInPxPlaylists = (paddingStartInDpPlaylist * scale).toInt()
+                        val paddingStartInPxAlbums = (paddingStartInDpAlbums * scale).toInt()
+                        val paddingStartInPxArtists = (paddingStartInDpArtists * scale).toInt()
+                        val paddingInPx = (paddingInDp * scale).toInt()
+                        binding.likedSongRecyclerView.setPadding(0,0,0,paddingInPx)
+                        binding.artistsRecyclerView.setPadding(paddingStartInPxArtists,0,0,paddingInPx)
+                        binding.playListRecyclerView.setPadding(paddingStartInPxPlaylists,0,0,paddingInPx)
+                        binding.albumsRecyclerView.setPadding(paddingStartInPxAlbums,0,0,paddingInPx)
 
                         // Show with animation
                         miniPlayer.animate()
@@ -145,15 +172,15 @@ class Favourite : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        backgroundView = view.findViewById(R.id.backgroundView)
+        apiUrl = requireContext().getString(R.string.API)
+
         miniPlayer = view.findViewById(R.id.miniPlayer)
         songName = view.findViewById(R.id.songNameText)
         artistName = view.findViewById(R.id.artistNameText)
-        songImage = view.findViewById(R.id.songImage)
+        lottieAnimationView = view.findViewById(R.id.lottieAnimationView)
         playPauseButton = view.findViewById(R.id.playButton)
         nextButton = view.findViewById(R.id.appCompatImageView7)
         prevButton = view.findViewById(R.id.appCompatImageView3)
-        background = view.findViewById(R.id.backGroundImageView)
 
         playPauseButton.setOnClickListener {
             if (musicPlayerService?.isPlayingLive?.value == true) {
@@ -310,67 +337,67 @@ class Favourite : Fragment() {
 
         loadFavouriteData()
     }
-    fun fetchSongsByIDs(songIDs: List<String>) {
-        Thread {
-            val client = OkHttpClient()
+    private fun fetchSongsByIDs(songIDs: List<String>) {
+        viewLifecycleOwner.lifecycleScope.launch {
             val tempList = mutableListOf<SongItem>()
 
             try {
-                for (songID in songIDs) {
-                    val request = Request.Builder()
-                        .url("https://jiosaavn-api-stableone.vercel.app/api/songs/$songID")
-                        .get()
-                        .build()
+                withContext(Dispatchers.IO) {
+                    for (songID in songIDs) {
+                        val request = Request.Builder()
+                            .url("$apiUrl/songs/$songID")
+                            .get()
+                            .build()
 
-                    val response = client.newCall(request).execute()
-                    if (response.isSuccessful) {
-                        val responseBody = response.body.string()
-                        if (responseBody .isNotEmpty()) {
-                            val songItem = parseSongJson(responseBody)
-                            if (songItem != null) {
-                                tempList.add(songItem)
-                            }
-                        }
-                    } else {
-                        Log.e("SAAVN", "Error: ${response.code}")
-                    }
-                }
-
-                requireActivity().runOnUiThread {
-                    if (isAdded && view != null) {
-                        binding.likedSongRecyclerView.post {
-                            songList.clear()
-                            songList.addAll(tempList)
-                            songAdapter.notifyDataSetChanged()
-
-                            val userID = auth.currentUser?.uid
-                            val favSongRef = FirebaseDatabase.getInstance().getReference().child("Users").child(userID!!).child("Favourites")
-                                .child("Songs")
-
-                            favSongRef.addValueEventListener(object : ValueEventListener {
-                                override fun onDataChange(snapshot: DataSnapshot) {
-                                    if (snapshot.exists()) {
-                                        val favoriteIds = snapshot.children.mapNotNull { it.key }
-
-                                        songList.forEach { song ->
-                                            song.isFav = favoriteIds.contains(song.id)
-                                        }
-                                        songAdapter.notifyDataSetChanged()
+                        okHttpClient.newCall(request).execute().use { response ->
+                            if (response.isSuccessful) {
+                                val responseBody = response.body.string()
+                                if (responseBody.isNotEmpty()) {
+                                    parseSongJson(responseBody)?.let {
+                                        tempList.add(it)
                                     }
                                 }
-
-                                override fun onCancelled(error: DatabaseError) {
-                                    Log.e("FAV", "Error loading favourites", error.toException())
-                                }
-                            })
-                            onDataLoaded("songs")
+                            } else {
+                                Log.e("SAAVN", "Error: ${response.code}")
+                            }
                         }
                     }
                 }
+
+                if (isAdded && view != null) {
+                    binding.likedSongRecyclerView.post {
+                        songList.clear()
+                        songList.addAll(tempList)
+                        songAdapter.notifyDataSetChanged()
+
+                        val userID = auth.currentUser?.uid
+                        val favSongRef = FirebaseDatabase.getInstance().getReference().child("Users").child(userID!!).child("Favourites")
+                            .child("Songs")
+
+                        favSongRef.addValueEventListener(object : ValueEventListener {
+                            override fun onDataChange(snapshot: DataSnapshot) {
+                                if (snapshot.exists()) {
+                                    val favoriteIds = snapshot.children.mapNotNull { it.key }.toSet()
+
+                                    songList.forEach { song ->
+                                        song.isFav = favoriteIds.contains(song.id)
+                                    }
+                                    songAdapter.notifyDataSetChanged()
+                                }
+                            }
+
+                            override fun onCancelled(error: DatabaseError) {
+                                Log.e("FAV", "Error loading favourites", error.toException())
+                            }
+                        })
+                        onDataLoaded("songs")
+                    }
+                }
+
             } catch (e: Exception) {
                 Log.e("SAAVN", "Exception: ${e.message}")
             }
-        }.start()
+        }
     }
     private fun parseSongJson(jsonString: String): SongItem? {
         val json = JSONObject(jsonString)
@@ -432,47 +459,46 @@ class Favourite : Fragment() {
 
         return SongItem(id, name, primaryArtists, image, duration, download)
     }
-    fun fetchArtistsByIDs(artistsID: List<String>) {
-        Thread {
-            val client = OkHttpClient()
+    private fun fetchArtistsByIDs(artistsID: List<String>) {
+        viewLifecycleOwner.lifecycleScope.launch {
             val tempList = mutableListOf<Artists>()
 
             try {
-                for (artistID in artistsID) {
-                    val request = Request.Builder()
-                        .url("https://jiosaavn-api-stableone.vercel.app/api/artists/${artistID}")
-                        .get()
-                        .build()
+                withContext(Dispatchers.IO) {
+                    for (artistID in artistsID) {
+                        val request = Request.Builder()
+                            .url("$apiUrl/artists/${artistID}")
+                            .get()
+                            .build()
 
-                    val response = client.newCall(request).execute()
-                    if (response.isSuccessful) {
-                        val responseBody = response.body.string()
-                        if (responseBody .isNotEmpty()) {
-                            val artistItem = parseArtistJson(responseBody)
-                            if (artistItem != null) {
-                                tempList.add(artistItem)
+                        val response = okHttpClient.newCall(request).execute()
+                        if (response.isSuccessful) {
+                            val responseBody = response.body.string()
+                            if (responseBody.isNotEmpty()) {
+                                val artistItem = parseArtistJson(responseBody)
+                                if (artistItem != null) {
+                                    tempList.add(artistItem)
+                                }
                             }
+                        } else {
+                            Log.e("SAAVN", "Error: ${response.code}")
                         }
-                    } else {
-                        Log.e("SAAVN", "Error: ${response.code}")
                     }
                 }
 
-                requireActivity().runOnUiThread {
-                    if (isAdded && view != null) {
-                        binding.artistsRecyclerView.post {
-                            artistsList.clear()
-                            artistsList.addAll(tempList)
-                            artistsAdapter.notifyDataSetChanged()
-                            onDataLoaded("artists")
-                        }
+                if (isAdded && view != null) {
+                    binding.artistsRecyclerView.post {
+                        artistsList.clear()
+                        artistsList.addAll(tempList)
+                        artistsAdapter.notifyDataSetChanged()
+                        onDataLoaded("artists")
                     }
                 }
 
             } catch (e: Exception) {
-                Log.e("SAAVN", "Exception: ${e.message}")
+                    Log.e("SAAVN", "Exception: ${e.message}")
             }
-        }.start()
+        }
     }
     private fun parseArtistJson(jsonString: String): Artists?{
         val json = JSONObject(jsonString)
@@ -492,33 +518,32 @@ class Favourite : Fragment() {
 
         return Artists(id,name,"",imageUrl,type)
     }
-    fun fetchAlbumsByIDs(albumsID: List<String>) {
-        Thread {
-            val client = OkHttpClient()
+    private fun fetchAlbumsByIDs(albumsID: List<String>) {
+        viewLifecycleOwner.lifecycleScope.launch {
             val tempList = mutableListOf<DataItem>()
 
-            try {
-                for (albumID in albumsID) {
-                    val request = Request.Builder()
-                        .url("https://jiosaavn-api-stableone.vercel.app/api/albums?id=${albumID}")
-                        .get()
-                        .build()
+            withContext(Dispatchers.IO) {
+                try {
+                    for (albumID in albumsID) {
+                        val request = Request.Builder()
+                            .url("$apiUrl/albums?id=${albumID}")
+                            .get()
+                            .build()
 
-                    val response = client.newCall(request).execute()
-                    if (response.isSuccessful) {
-                        val responseBody = response.body.string()
-                        if (responseBody .isNotEmpty()) {
-                            val albumItem = parseAlbumJson(responseBody)
-                            if (albumItem != null) {
-                                tempList.add(albumItem)
+                        val response = okHttpClient.newCall(request).execute()
+                        if (response.isSuccessful) {
+                            val responseBody = response.body.string()
+                            if (responseBody .isNotEmpty()) {
+                                val albumItem = parseAlbumJson(responseBody)
+                                if (albumItem != null) {
+                                    tempList.add(albumItem)
+                                }
                             }
+                        } else {
+                            Log.e("SAAVN", "Error: ${response.code}")
                         }
-                    } else {
-                        Log.e("SAAVN", "Error: ${response.code}")
                     }
-                }
 
-                requireActivity().runOnUiThread {
                     if (isAdded && view != null) {
                         binding.albumsRecyclerView.post {
                             albumsList.clear()
@@ -527,11 +552,12 @@ class Favourite : Fragment() {
                             onDataLoaded("albums")
                         }
                     }
+
+                } catch (e: Exception) {
+                    Log.e("SAAVN", "Exception: ${e.message}")
                 }
-            } catch (e: Exception) {
-                Log.e("SAAVN", "Exception: ${e.message}")
             }
-        }.start()
+        }
     }
     private fun parseAlbumJson(jsonString: String): DataItem? {
         val json = JSONObject(jsonString)
@@ -556,33 +582,32 @@ class Favourite : Fragment() {
 
         return DataItem(id,name,artistName,imageUrl)
     }
-    fun fetchPlaylistsByIDs(playlistsID: List<String>) {
-        Thread {
-            val client = OkHttpClient()
+    private fun fetchPlaylistsByIDs(playlistsID: List<String>) {
+        viewLifecycleOwner.lifecycleScope.launch {
             val tempList = mutableListOf<DataItem>()
 
-            try {
-                for (playlistID in playlistsID) {
-                    val request = Request.Builder()
-                        .url("https://jiosaavn-api-stableone.vercel.app/api/playlists?id=${playlistID}")
-                        .get()
-                        .build()
+            withContext(Dispatchers.IO) {
+                try {
+                    for (playlistID in playlistsID) {
+                        val request = Request.Builder()
+                            .url("$apiUrl/playlists?id=${playlistID}")
+                            .get()
+                            .build()
 
-                    val response = client.newCall(request).execute()
-                    if (response.isSuccessful) {
-                        val responseBody = response.body.string()
-                        if (responseBody .isNotEmpty()) {
-                            val playlistItem = parsePlaylistJson(responseBody)
-                            if (playlistItem != null) {
-                                tempList.add(playlistItem)
+                        val response = okHttpClient.newCall(request).execute()
+                        if (response.isSuccessful) {
+                            val responseBody = response.body.string()
+                            if (responseBody .isNotEmpty()) {
+                                val playlistItem = parsePlaylistJson(responseBody)
+                                if (playlistItem != null) {
+                                    tempList.add(playlistItem)
+                                }
                             }
+                        } else {
+                            Log.e("SAAVN", "Error: ${response.code}")
                         }
-                    } else {
-                        Log.e("SAAVN", "Error: ${response.code}")
                     }
-                }
 
-                requireActivity().runOnUiThread {
                     if (isAdded && view != null) {
                         binding.playListRecyclerView.post {
                             playlistsList.clear()
@@ -591,11 +616,12 @@ class Favourite : Fragment() {
                             onDataLoaded("playlists")
                         }
                     }
+
+                } catch (e: Exception) {
+                    Log.e("SAAVN", "Exception: ${e.message}")
                 }
-            } catch (e: Exception) {
-                Log.e("SAAVN", "Exception: ${e.message}")
             }
-        }.start()
+        }
     }
     private fun parsePlaylistJson(jsonString: String): DataItem? {
         val json = JSONObject(jsonString)
@@ -621,73 +647,18 @@ class Favourite : Fragment() {
             ?: "Unknown Artist"              // fallback if null or empty
 
         songName.text = Html.fromHtml(songItem?.name ?: "", Html.FROM_HTML_MODE_LEGACY)
-        artistName.text = artistsName
-        Picasso.get().load(songItem?.image[1]?.url).into(songImage)
-        setDynamicBackground(songItem?.image[1]?.url ?: "" ,songImage,background)
-
+        artistName.text = Html.fromHtml(artistsName,Html.FROM_HTML_MODE_LEGACY)
+//        Picasso.get().load(songItem?.image[1]?.url).into(songImage)
+//        setDynamicBackground(songItem?.image[1]?.url ?: "" ,songImage,background)
     }
     private fun updatePlayPauseIcon(isPlaying: Boolean) {
         if (isPlaying) {
             playPauseButton.setImageResource(R.drawable.pausebutton)
+            lottieAnimationView.playAnimation()
         } else {
             playPauseButton.setImageResource(R.drawable.playbutton)
+            lottieAnimationView.pauseAnimation()
         }
-    }
-    private fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
-        Glide.with(imageView.context)
-            .asBitmap()
-            .load(imageUrl)
-            .override(500, 500)
-            .into(object : CustomTarget<Bitmap>() {
-                override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
-
-                    Palette.from(resource).generate { palette ->
-                        val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
-                        val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
-
-                        val baseGradient = GradientDrawable(
-                            GradientDrawable.Orientation.TOP_BOTTOM,
-                            intArrayOf(
-                                ColorUtils.setAlphaComponent(darkVibrant, 180),
-                                ColorUtils.setAlphaComponent(vibrant, 180)
-                            )
-                        ).apply {
-                            gradientType = GradientDrawable.LINEAR_GRADIENT
-                            cornerRadius = 0f
-                        }
-
-                        val glassOverlay = GradientDrawable().apply {
-                            colors = intArrayOf(
-                                ColorUtils.setAlphaComponent(Color.WHITE, 90),
-                                ColorUtils.setAlphaComponent(Color.WHITE, 20)
-                            )
-                            gradientType = GradientDrawable.LINEAR_GRADIENT
-                            orientation = GradientDrawable.Orientation.TOP_BOTTOM
-                        }
-
-                        val glowOverlay = GradientDrawable().apply {
-                            shape = GradientDrawable.RECTANGLE
-                            gradientType = GradientDrawable.RADIAL_GRADIENT
-                            gradientRadius = 700f
-                            colors = intArrayOf(
-                                ColorUtils.setAlphaComponent(vibrant, 100),
-                                Color.TRANSPARENT
-                            )
-                            setGradientCenter(0.5f, 0.3f)
-                        }
-
-                        val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
-                        layerDrawable.setLayerInset(0, -50, -50, -50, -50)
-
-                        backgroundView.background = layerDrawable
-                        backgroundView.background.alpha = 230
-                    }
-                }
-
-                override fun onLoadCleared(placeholder: Drawable?) {
-                    // Optional cleanup
-                }
-            })
     }
     private fun onDataLoaded(category: String) {
         when(category) {

@@ -10,4 +10,6 @@
         <item>Male</item>
         <item>Female</item>
     </string-array>
+    <string name="API">https://jiosaavn-api-stableone.vercel.app/api</string>
+    <string name="Spotify_Url">https://spotify-to-musify.vercel.app/api</string>
 </resources>

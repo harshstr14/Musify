@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -39,6 +40,8 @@ class Profile : Fragment() {
     private lateinit var cameraIcon: ImageButton
     private var selectedImageUri: Uri ?= null
     private var progressDialog: AlertDialog? = null
+    private var progressTextView: TextView? = null
+    private var dotTimer: CountDownTimer? = null
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             uri?.let {
@@ -283,8 +286,8 @@ class Profile : Fragment() {
     }
     private fun showProgressDialog(message: String = "Loading...") {
         val dialogView = layoutInflater.inflate(R.layout.dialog_progress, null)
-        val textView = dialogView.findViewById<TextView>(R.id.progressText)
-        textView.text = message
+        progressTextView = dialogView.findViewById(R.id.progressText)
+        progressTextView?.text = message
 
         val builder = AlertDialog.Builder(requireContext())
         builder.setView(dialogView)
@@ -293,8 +296,23 @@ class Profile : Fragment() {
         progressDialog = builder.create()
         progressDialog?.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
         progressDialog?.show()
+        startDotAnimation()
+    }
+    private fun startDotAnimation() {
+        var dots = 0
+        dotTimer?.cancel()
+        dotTimer = object : CountDownTimer(Long.MAX_VALUE, 500) {
+            override fun onTick(millisUntilFinished: Long) {
+                dots = (dots + 1) % 4
+                progressTextView?.text = "Uploading" + ".".repeat(dots)
+            }
+
+            override fun onFinish() {}
+        }.start()
     }
     private fun hideLoading() {
+        dotTimer?.cancel()
+        dotTimer = null
         progressDialog?.dismiss()
     }
 }

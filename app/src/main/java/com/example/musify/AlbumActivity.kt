@@ -5,11 +5,6 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.res.Configuration
-import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.drawable.Drawable
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.os.IBinder
 import android.text.Html
@@ -22,18 +17,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
-import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.palette.graphics.Palette
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.bumptech.glide.Glide
-import com.bumptech.glide.request.target.CustomTarget
+import com.airbnb.lottie.LottieAnimationView
 import com.example.musify.Home.RecentlyPlayedManager
 import com.example.musify.databinding.ActivityAlbumBinding
 import com.example.musify.service.MusicPlayerService
@@ -47,9 +39,13 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.squareup.picasso.Picasso
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 class AlbumActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAlbumBinding
@@ -60,13 +56,19 @@ class AlbumActivity : AppCompatActivity() {
     private lateinit var miniPlayer: View
     private lateinit var songName: TextView
     private lateinit var artistName: TextView
-    private lateinit var songImage: AppCompatImageView
     private lateinit var playPauseButton: AppCompatImageView
     private lateinit var nextButton: AppCompatImageView
     private lateinit var prevButton: AppCompatImageView
-    private lateinit var background: AppCompatImageView
-    private lateinit var backgroundView: CardView
+    private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var favouriteIcon: AppCompatImageView
+    private lateinit var apiUrl: String
+    private val okHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -86,12 +88,21 @@ class AlbumActivity : AppCompatActivity() {
                             miniPlayer.visibility = View.GONE
                         }
                         .start()
+                    val paddingInDp = 10
+                    val scale = resources.displayMetrics.density
+                    val paddingInPx = (paddingInDp * scale).toInt()
+                    binding.constraintLayout0.setPadding(0,0,0,paddingInPx)
                 } else {
                     if (miniPlayer.visibility != View.VISIBLE) {
                         // Prepare for animation
                         miniPlayer.translationY = miniPlayer.height.toFloat()
                         miniPlayer.alpha = 0f
                         miniPlayer.visibility = View.VISIBLE
+
+                        val paddingInDp = 90
+                        val scale = resources.displayMetrics.density
+                        val paddingInPx = (paddingInDp * scale).toInt()
+                        binding.constraintLayout0.setPadding(0,0,0,paddingInPx)
 
                         // Show with animation
                         miniPlayer.animate()
@@ -142,6 +153,8 @@ class AlbumActivity : AppCompatActivity() {
 
         setStatusBarIconsTheme(this)
 
+        apiUrl = getString(R.string.API)
+
         binding.progressBar.fadeIn()
         binding.scrollView.fadeOut()
 
@@ -153,15 +166,13 @@ class AlbumActivity : AppCompatActivity() {
             finish()
         }
 
-        backgroundView = findViewById(R.id.backgroundView)
         miniPlayer = findViewById(R.id.miniPlayer)
         songName = findViewById(R.id.songNameText)
         artistName = findViewById(R.id.artistNameText)
-        songImage = findViewById(R.id.songImage)
+        lottieAnimationView = findViewById(R.id.lottieAnimationView)
         playPauseButton = findViewById(R.id.playButton)
         nextButton = findViewById(R.id.appCompatImageView7)
         prevButton = findViewById(R.id.appCompatImageView3)
-        background = findViewById(R.id.backGroundImageView)
 
         favouriteIcon = findViewById(R.id.favouriteIcon1)
 
@@ -194,136 +205,154 @@ class AlbumActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference().child("Users")
     }
-    fun fetchAlbumByID(albumID: String) {
-        Thread {
+    private fun fetchAlbumByID(albumID: String) {
+        lifecycleScope.launch {
             try {
-                val client = OkHttpClient()
-                val request = Request.Builder()
-                    .url("https://jiosaavn-api-stableone.vercel.app/api/albums?id=${albumID}&limit=30")
-                    .get()
-                    .build()
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val responseBody = response.body.string()
-                    parseAlbumJson(responseBody)
-                } else {
-                    Log.e("SAAVN", "Error: ${response.code}")
+                val responseBody = withContext(Dispatchers.IO) {
+                    val request = Request.Builder()
+                        .url("$apiUrl/albums?id=${albumID}&limit=30")
+                        .get()
+                        .build()
+
+                    val response = okHttpClient.newCall(request).execute()
+
+                    if (!response.isSuccessful) {
+                        Log.e("SAAVN", "Error: ${response.code}")
+                        throw Exception("Error: ${response.code}")
+                    }
+
+                    response.body.string()
                 }
+
+                if (responseBody.isEmpty()) {
+                    Toast.makeText(this@AlbumActivity, "Empty response", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                parseAlbumJson(responseBody)
+
             } catch (e: Exception) {
                 Log.e("SAAVN", "Exception: ${e.message}")
             }
-        }.start()
+        }
     }
-    fun parseAlbumJson(jsonString: String) {
+    private suspend fun parseAlbumJson(jsonString: String) {
         val songList = ArrayList<SongItem>()
         var totalDuration = 0
 
-        val json = JSONObject(jsonString)
-        val success = json.optBoolean("success",false)
-        if (!success) return
-
-        val albumObject = json.getJSONObject("data")
-
-        val id = albumObject.optString("id")
-        val name = albumObject.optString("name")
-        val description = albumObject.optString("description")
-        val songCount = albumObject.optString("songCount")
-
-        val artistObject = albumObject.optJSONObject("artists")
-        val primaryArray = artistObject?.optJSONArray("primary")
+        var albumId = ""
+        var albumName = ""
+        var description = ""
+        var songCount = ""
+        val albumImages = mutableListOf<Image>()
         val primaryArtists = mutableListOf<Artists>()
-        for (i in 0 until (primaryArray?.length() ?: 0)) {
-            val artistsObject = primaryArray?.getJSONObject(i)
-            val artistsImage = artistsObject?.optJSONArray("image")
 
-            primaryArtists.add(
-                Artists(
-                    id = artistsObject?.optString("id") ?: "",
-                    name = artistsObject?.optString("name") ?: "",
-                    role = artistsObject?.optString("role") ?: "",
-                    image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
-                    type = artistsObject?.optString("type") ?: ""
-                )
-            )
-        }
+        withContext(Dispatchers.Default) {
+            val json = JSONObject(jsonString)
+            val success = json.optBoolean("success",false)
+            if (!success) return@withContext
 
-        val imageArray = albumObject.optJSONArray("image")
-        val image = mutableListOf<Image>()
-        if (imageArray != null) {
-            for (j in 0 until imageArray.length()) {
-                val imageObject = imageArray.getJSONObject(j)
-                image.add(
-                    Image(
-                        quality = imageObject?.optString("quality") ?: "",
-                        url = imageObject?.optString("url") ?: ""
+            val albumObject = json.getJSONObject("data")
+
+            albumId = albumObject.optString("id")
+            albumName = albumObject.optString("name")
+            description = albumObject.optString("description")
+            songCount = albumObject.optString("songCount")
+
+            val artistObject = albumObject.optJSONObject("artists")
+            val primaryArray = artistObject?.optJSONArray("primary")
+            for (i in 0 until (primaryArray?.length() ?: 0)) {
+                val artistsObject = primaryArray?.getJSONObject(i)
+                val artistsImage = artistsObject?.optJSONArray("image")
+
+                primaryArtists.add(
+                    Artists(
+                        id = artistsObject?.optString("id") ?: "",
+                        name = artistsObject?.optString("name") ?: "",
+                        role = artistsObject?.optString("role") ?: "",
+                        image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
+                        type = artistsObject?.optString("type") ?: ""
                     )
                 )
             }
-        }
 
-        val songArray = albumObject.optJSONArray("songs")
-        if (songArray != null) {
-            for (j in 0 until songArray.length()) {
-                val songObject = songArray.getJSONObject(j)
-
-                val id = songObject.optString("id")
-                val name = songObject.optString("name")
-                val duration = songObject.optInt("duration")
-                totalDuration += duration
-
-                val imageArray = songObject.optJSONArray("image")
-                val image = mutableListOf<Image>()
-                if (imageArray != null) {
-                    for (j in 0 until imageArray.length()) {
-                        val imageObject = imageArray.getJSONObject(j)
-                        image.add(
-                            Image(
-                                quality = imageObject?.optString("quality") ?: "",
-                                url = imageObject?.optString("url") ?: ""
-                            )
-                        )
-                    }
-                }
-
-                val downloadArray = songObject.optJSONArray("downloadUrl")
-                val download = mutableListOf<Download>()
-                if (downloadArray != null) {
-                    for (k in 0 until downloadArray.length()) {
-                        val downloadObject = downloadArray.getJSONObject(k)
-                        download.add(
-                            Download(
-                                quality = downloadObject?.optString("quality") ?: "",
-                                url = downloadObject?.optString("url") ?: ""
-                            )
-                        )
-                    }
-                }
-
-                val artistsObj = songObject.optJSONObject("artists")
-                val primaryArray = artistsObj?.optJSONArray("primary")
-                val primaryArtists = mutableListOf<Artists>()
-                for (i in 0 until (primaryArray?.length() ?: 0)) {
-                    val artistsObject = primaryArray?.getJSONObject(i)
-                    val artistsImage = artistsObject?.optJSONArray("image")
-
-                    primaryArtists.add(
-                        Artists(
-                            id = artistsObject?.optString("id") ?: "",
-                            name = artistsObject?.optString("name") ?: "",
-                            role = artistsObject?.optString("role") ?: "",
-                            image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
-                            type = artistsObject?.optString("type") ?: ""
+            val imageArray = albumObject.optJSONArray("image")
+            if (imageArray != null) {
+                for (j in 0 until imageArray.length()) {
+                    val imageObject = imageArray.getJSONObject(j)
+                    albumImages.add(
+                        Image(
+                            quality = imageObject?.optString("quality") ?: "",
+                            url = imageObject?.optString("url") ?: ""
                         )
                     )
                 }
+            }
 
-                songList.add(SongItem(id, name, primaryArtists, image, duration, download))
+            val songArray = albumObject.optJSONArray("songs")
+            if (songArray != null) {
+                for (j in 0 until songArray.length()) {
+                    val songObject = songArray.getJSONObject(j)
+
+                    val id = songObject.optString("id")
+                    val name = songObject.optString("name")
+                    val duration = songObject.optInt("duration")
+                    totalDuration += duration
+
+                    val imageArray = songObject.optJSONArray("image")
+                    val image = mutableListOf<Image>()
+                    if (imageArray != null) {
+                        for (j in 0 until imageArray.length()) {
+                            val imageObject = imageArray.getJSONObject(j)
+                            image.add(
+                                Image(
+                                    quality = imageObject?.optString("quality") ?: "",
+                                    url = imageObject?.optString("url") ?: ""
+                                )
+                            )
+                        }
+                    }
+
+                    val downloadArray = songObject.optJSONArray("downloadUrl")
+                    val download = mutableListOf<Download>()
+                    if (downloadArray != null) {
+                        for (k in 0 until downloadArray.length()) {
+                            val downloadObject = downloadArray.getJSONObject(k)
+                            download.add(
+                                Download(
+                                    quality = downloadObject?.optString("quality") ?: "",
+                                    url = downloadObject?.optString("url") ?: ""
+                                )
+                            )
+                        }
+                    }
+
+                    val artistsObj = songObject.optJSONObject("artists")
+                    val primaryArray = artistsObj?.optJSONArray("primary")
+                    val primaryArtists = mutableListOf<Artists>()
+                    for (i in 0 until (primaryArray?.length() ?: 0)) {
+                        val artistsObject = primaryArray?.getJSONObject(i)
+                        val artistsImage = artistsObject?.optJSONArray("image")
+
+                        primaryArtists.add(
+                            Artists(
+                                id = artistsObject?.optString("id") ?: "",
+                                name = artistsObject?.optString("name") ?: "",
+                                role = artistsObject?.optString("role") ?: "",
+                                image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
+                                type = artistsObject?.optString("type") ?: ""
+                            )
+                        )
+                    }
+
+                    songList.add(SongItem(id, name, primaryArtists, image, duration, download))
+                }
             }
         }
 
-        runOnUiThread {
-            Picasso.get().load(image[2].url).into(binding.imageView)
-            binding.albumNameText.text = Html.fromHtml(name,Html.FROM_HTML_MODE_LEGACY)
+        withContext(Dispatchers.Main) {
+            Picasso.get().load(albumImages[2].url).into(binding.imageView)
+            binding.albumNameText.text = Html.fromHtml(albumName,Html.FROM_HTML_MODE_LEGACY)
             binding.descriptionText.text = Html.fromHtml(description, Html.FROM_HTML_MODE_LEGACY)
             "Song  :  $songCount".also { binding.totalSongText.text = it }
             Log.d("totalDuration","$totalDuration")
@@ -331,9 +360,9 @@ class AlbumActivity : AppCompatActivity() {
             binding.durationText.text = duration
 
             val userID = auth.currentUser?.uid
-            val favouriteReference = database.child(userID!!).child("Favourites").child("Albums").child(id)
+            val favouriteReference = database.child(userID!!).child("Favourites").child("Albums").child(albumId)
 
-            favouriteReference.addValueEventListener(object : ValueEventListener {
+            favouriteReference.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val isFavourite = snapshot.child("isFavourite").getValue(Boolean::class.java) ?: false
                     favouriteIcon.isSelected = isFavourite
@@ -343,24 +372,24 @@ class AlbumActivity : AppCompatActivity() {
             })
 
             favouriteIcon.setOnClickListener {
-                val anim = AnimationUtils.loadAnimation(this, R.anim.nav_item_click)
+                val anim = AnimationUtils.loadAnimation(this@AlbumActivity, R.anim.nav_item_click)
                 favouriteIcon.startAnimation(anim)
 
                 favouriteReference.get().addOnSuccessListener { snapshot ->
                     if (!snapshot.exists()) {
                         val songData = mapOf(
-                            "id" to id,
-                            "albumName" to name,
+                            "id" to albumId,
+                            "albumName" to albumName,
                             "isFavourite" to true
                         )
                         favouriteReference.setValue(songData).addOnSuccessListener {
-                            Toast.makeText(this, "Added To Favourite", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@AlbumActivity, "Added To Favourite", Toast.LENGTH_SHORT).show()
                         }.addOnFailureListener {
-                            Toast.makeText(this, "Failed To Add in Favourite", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@AlbumActivity, "Failed To Add in Favourite", Toast.LENGTH_SHORT).show()
                         }
                     } else {
                         favouriteReference.removeValue()
-                        Toast.makeText(this, "Removed From Favourite", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@AlbumActivity, "Removed From Favourite", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -375,13 +404,13 @@ class AlbumActivity : AppCompatActivity() {
                         "isFavourite" to true
                     )
                     favSongRef.child(songItem.id).setValue(songData)
-                    Toast.makeText(this, "Added To Favourite", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@AlbumActivity, "Added To Favourite", Toast.LENGTH_SHORT).show()
                 } else {
                     favSongRef.child(songItem.id).removeValue()
-                    Toast.makeText(this, "Removed From Favourite", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@AlbumActivity, "Removed From Favourite", Toast.LENGTH_SHORT).show()
                 }
             }
-            binding.songRecyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.VERTICAL,false)
+            binding.songRecyclerView.layoutManager = LinearLayoutManager(this@AlbumActivity, LinearLayoutManager.VERTICAL,false)
             binding.songRecyclerView.adapter = songAdapter
             binding.songRecyclerView.isNestedScrollingEnabled = false
 
@@ -400,10 +429,10 @@ class AlbumActivity : AppCompatActivity() {
                 }
             })
 
-            favSongRef.addValueEventListener(object : ValueEventListener {
+            favSongRef.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (snapshot.exists()) {
-                        val favoriteIds = snapshot.children.mapNotNull { it.key }
+                        val favoriteIds = snapshot.children.mapNotNull { it.key }.toSet()
 
                         songList.forEach { song ->
                             song.isFav = favoriteIds.contains(song.id)
@@ -418,7 +447,7 @@ class AlbumActivity : AppCompatActivity() {
             })
 
             val artistsAdapter = ArtistsAdapter(primaryArtists)
-            binding.artistRecyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL,false)
+            binding.artistRecyclerView.layoutManager = LinearLayoutManager(this@AlbumActivity, LinearLayoutManager.HORIZONTAL,false)
             binding.artistRecyclerView.adapter = artistsAdapter
 
             artistsAdapter.setOnItemClickListener(object : ArtistsAdapter.OnItemClickListener {
@@ -432,27 +461,27 @@ class AlbumActivity : AppCompatActivity() {
             binding.progressBar.fadeOut()
             binding.scrollView.fadeIn()
 
-            val anim = AnimationUtils.loadAnimation(this,R.anim.nav_item_click)
+            val anim = AnimationUtils.loadAnimation(this@AlbumActivity,R.anim.nav_item_click)
 
             binding.playButtonIcon.setOnClickListener {
                 binding.playButtonIcon.startAnimation(anim)
-                val intent = Intent(this, MusicPlayerService::class.java).apply {
+                val intent = Intent(this@AlbumActivity, MusicPlayerService::class.java).apply {
                     action = MusicPlayerService.ACTION_PLAY_NEW
                     putParcelableArrayListExtra("playlist", songList)
                 }
 
-                ContextCompat.startForegroundService(this, intent)
+                ContextCompat.startForegroundService(this@AlbumActivity, intent)
                 musicPlayerService?.updateNotification()
             }
 
             binding.shuffleButton.setOnClickListener {
-                Toast.makeText(this,"Playing with Shuffle", Toast.LENGTH_SHORT).show()
-                val intent = Intent(this, MusicPlayerService::class.java).apply {
+                Toast.makeText(this@AlbumActivity,"Playing with Shuffle", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this@AlbumActivity, MusicPlayerService::class.java).apply {
                     action = MusicPlayerService.ACTION_PLAY_NEW
                     putParcelableArrayListExtra("playlist", songList)
                 }
 
-                ContextCompat.startForegroundService(this, intent)
+                ContextCompat.startForegroundService(this@AlbumActivity, intent)
 
                 binding.shuffleButton.startAnimation(anim)
                 musicPlayerService?.updateNotification()
@@ -479,72 +508,18 @@ class AlbumActivity : AppCompatActivity() {
             ?: "Unknown Artist"              // fallback if null or empty
 
         songName.text = Html.fromHtml(songItem?.name ?: "", Html.FROM_HTML_MODE_LEGACY)
-        artistName.text = artistsName
-        Picasso.get().load(songItem?.image[1]?.url).into(songImage)
-        setDynamicBackground(songItem?.image[1]?.url ?: "",songImage,background)
+        artistName.text = Html.fromHtml(artistsName,Html.FROM_HTML_MODE_LEGACY)
+//        Picasso.get().load(songItem?.image[1]?.url).into(songImage)
+//        setDynamicBackground(songItem?.image[1]?.url ?: "",songImage,background)
     }
     private fun updatePlayPauseIcon(isPlaying: Boolean) {
         if (isPlaying) {
             playPauseButton.setImageResource(R.drawable.pausebutton)
+            lottieAnimationView.playAnimation()
         } else {
             playPauseButton.setImageResource(R.drawable.playbutton)
+            lottieAnimationView.pauseAnimation()
         }
-    }
-    private fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
-        Glide.with(imageView.context)
-            .asBitmap()
-            .load(imageUrl)
-            .override(500, 500)
-            .into(object : CustomTarget<Bitmap>() {
-                override fun onResourceReady(resource: Bitmap, transition: com.bumptech.glide.request.transition.Transition<in Bitmap>?) {
-
-                    Palette.from(resource).generate { palette ->
-                        val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
-                        val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
-
-                        val baseGradient = GradientDrawable(
-                            GradientDrawable.Orientation.TOP_BOTTOM,
-                            intArrayOf(
-                                ColorUtils.setAlphaComponent(darkVibrant, 180),
-                                ColorUtils.setAlphaComponent(vibrant, 180)
-                            )
-                        ).apply {
-                            gradientType = GradientDrawable.LINEAR_GRADIENT
-                            cornerRadius = 0f
-                        }
-
-                        val glassOverlay = GradientDrawable().apply {
-                            colors = intArrayOf(
-                                ColorUtils.setAlphaComponent(Color.WHITE, 90),
-                                ColorUtils.setAlphaComponent(Color.WHITE, 20)
-                            )
-                            gradientType = GradientDrawable.LINEAR_GRADIENT
-                            orientation = GradientDrawable.Orientation.TOP_BOTTOM
-                        }
-
-                        val glowOverlay = GradientDrawable().apply {
-                            shape = GradientDrawable.RECTANGLE
-                            gradientType = GradientDrawable.RADIAL_GRADIENT
-                            gradientRadius = 700f
-                            colors = intArrayOf(
-                                ColorUtils.setAlphaComponent(vibrant, 100),
-                                Color.TRANSPARENT
-                            )
-                            setGradientCenter(0.5f, 0.3f)
-                        }
-
-                        val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
-                        layerDrawable.setLayerInset(0, -50, -50, -50, -50)
-
-                        backgroundView.background = layerDrawable
-                        backgroundView.background.alpha = 230
-                    }
-                }
-
-                override fun onLoadCleared(placeholder: Drawable?) {
-                    // Optional cleanup
-                }
-            })
     }
     private fun enableEdgeToEdgeWithInsets(rootView: View) {
         val activity = rootView.context as ComponentActivity

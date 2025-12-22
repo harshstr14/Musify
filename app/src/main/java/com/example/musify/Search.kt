@@ -4,11 +4,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.drawable.Drawable
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.os.IBinder
 import android.text.Html
@@ -16,20 +11,18 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.AppCompatImageView
-import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
-import androidx.core.graphics.ColorUtils
 import androidx.fragment.app.Fragment
-import androidx.palette.graphics.Palette
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.bumptech.glide.Glide
-import com.bumptech.glide.request.target.CustomTarget
+import com.airbnb.lottie.LottieAnimationView
 import com.example.musify.Home.RecentlyPlayedManager
 import com.example.musify.databinding.FragmentSearchBinding
 import com.example.musify.service.MusicPlayerService
@@ -42,11 +35,14 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.squareup.picasso.Picasso
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 class Search : Fragment() {
     private lateinit var binding: FragmentSearchBinding
@@ -57,12 +53,10 @@ class Search : Fragment() {
     private lateinit var miniPlayer: View
     private lateinit var songName: TextView
     private lateinit var artistName: TextView
-    private lateinit var songImage: AppCompatImageView
     private lateinit var playPauseButton: AppCompatImageView
     private lateinit var nextButton: AppCompatImageView
     private lateinit var prevButton: AppCompatImageView
-    private lateinit var background: AppCompatImageView
-    private lateinit var backgroundView: CardView
+    private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var songAdapter: SuggestionSongAdapter
     private lateinit var artistsAdapter: ArtistsAdapter
     private lateinit var albumAdapter: AlbumAdapter
@@ -71,6 +65,14 @@ class Search : Fragment() {
     private var artistsList = mutableListOf<Artists>()
     private var albumList = mutableListOf<DataItem>()
     private var playlistList = mutableListOf<DataItem>()
+    private lateinit var apiUrl: String
+    private val okHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
 
     object SearchHistoryManager {
         private const val PREF_NAME = "search_history"
@@ -123,12 +125,39 @@ class Search : Fragment() {
                             miniPlayer.visibility = View.GONE
                         }
                         .start()
+                    val paddingInDp = 12
+                    val paddingStartInDpArtists = 35
+                    val paddingStartInDpAlbums = 25
+                    val paddingStartInDpPlaylist = 25
+                    val scale = resources.displayMetrics.density
+                    val paddingStartInPxPlaylists = (paddingStartInDpPlaylist * scale).toInt()
+                    val paddingStartInPxAlbums = (paddingStartInDpAlbums * scale).toInt()
+                    val paddingStartInPxArtists = (paddingStartInDpArtists * scale).toInt()
+                    val paddingInPx = (paddingInDp * scale).toInt()
+                    binding.searchRecyclerView.setPadding(0,0,0,paddingInPx)
+                    binding.artistsRecyclerView.setPadding(paddingStartInPxArtists,0,0,paddingInPx)
+                    binding.playListRecyclerView.setPadding(paddingStartInPxPlaylists,0,0,paddingInPx)
+                    binding.albumsRecyclerView.setPadding(paddingStartInPxAlbums,0,0,paddingInPx)
                 } else {
                     if (miniPlayer.visibility != View.VISIBLE) {
                         // Prepare for animation
                         miniPlayer.translationY = miniPlayer.height.toFloat()
                         miniPlayer.alpha = 0f
                         miniPlayer.visibility = View.VISIBLE
+
+                        val paddingInDp = 90
+                        val paddingStartInDpArtists = 35
+                        val paddingStartInDpAlbums = 25
+                        val paddingStartInDpPlaylist = 25
+                        val scale = resources.displayMetrics.density
+                        val paddingStartInPxPlaylists = (paddingStartInDpPlaylist * scale).toInt()
+                        val paddingStartInPxAlbums = (paddingStartInDpAlbums * scale).toInt()
+                        val paddingStartInPxArtists = (paddingStartInDpArtists * scale).toInt()
+                        val paddingInPx = (paddingInDp * scale).toInt()
+                        binding.searchRecyclerView.setPadding(0,0,0,paddingInPx)
+                        binding.artistsRecyclerView.setPadding(paddingStartInPxArtists,0,0,paddingInPx)
+                        binding.playListRecyclerView.setPadding(paddingStartInPxPlaylists,0,0,paddingInPx)
+                        binding.albumsRecyclerView.setPadding(paddingStartInPxAlbums,0,0,paddingInPx)
 
                         // Show with animation
                         miniPlayer.animate()
@@ -176,6 +205,8 @@ class Search : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        apiUrl = requireContext().getString(R.string.API)
+
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference().child("Users")
 
@@ -206,6 +237,8 @@ class Search : Fragment() {
                     putParcelableArrayListExtra("playlist", songList)
                     putExtra("index", position)
                 }
+                val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(requireView().windowToken, 0)
 
                 ContextCompat.startForegroundService(requireContext(), intent)
                 RecentlyPlayedManager.addToRecentlyPlayed(requireContext(),songList[position])
@@ -253,15 +286,13 @@ class Search : Fragment() {
             }
         })
 
-        backgroundView = view.findViewById(R.id.backgroundView)
         miniPlayer = view.findViewById(R.id.miniPlayer)
         songName = view.findViewById(R.id.songNameText)
         artistName = view.findViewById(R.id.artistNameText)
-        songImage = view.findViewById(R.id.songImage)
         playPauseButton = view.findViewById(R.id.playButton)
+        lottieAnimationView = view.findViewById(R.id.lottieAnimationView)
         nextButton = view.findViewById(R.id.appCompatImageView7)
         prevButton = view.findViewById(R.id.appCompatImageView3)
-        background = view.findViewById(R.id.backGroundImageView)
 
         playPauseButton.setOnClickListener {
             if (musicPlayerService?.isPlayingLive?.value == true) {
@@ -378,10 +409,10 @@ class Search : Fragment() {
                     binding.deleteIcon.fadeOut()
 
                     // trigger actual search
-                    fetchSongDataByQuery(query, "songs")
-                    fetchArtistsDataByQuery(query, "artists")
-                    fetchPlaylistsDataByQuery(query, "playlists")
-                    fetchAlbumsDataByQuery(query, "albums")
+                    fetchSongDataByQuery(query)
+                    fetchArtistsDataByQuery(query)
+                    fetchPlaylistsDataByQuery(query)
+                    fetchAlbumsDataByQuery(query)
                 }
                 return true
             }
@@ -416,10 +447,10 @@ class Search : Fragment() {
                     binding.deleteIcon.fadeOut()
 
                     // show search results
-                    fetchSongDataByQuery(newText, "songs")
-                    fetchArtistsDataByQuery(newText, "artists")
-                    fetchPlaylistsDataByQuery(newText, "playlists")
-                    fetchAlbumsDataByQuery(newText, "albums")
+                    fetchSongDataByQuery(newText)
+                    fetchArtistsDataByQuery(newText)
+                    fetchPlaylistsDataByQuery(newText)
+                    fetchAlbumsDataByQuery(newText)
                 }
 
                 when (searchCategory) {
@@ -470,92 +501,105 @@ class Search : Fragment() {
             }
         }
     }
-    fun fetchSongDataByQuery(query: String,root: String) {
-        Thread {
+    private fun fetchSongDataByQuery(query: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val client = OkHttpClient()
-                val request = Request.Builder()
-                    .url("https://jiosaavn-api-stableone.vercel.app/api/search/${root}?query=${query}&limit=30")
-                    .get()
-                    .build()
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val responseBody = response.body.string()
-                    parseSongDataJson(responseBody)
-                } else {
-                    Log.e("SAAVN", "Error: ${response.code}")
+                val responseBody = withContext(Dispatchers.IO) {
+                    val request = Request.Builder()
+                        .url("$apiUrl/search/songs?query=${query}&limit=30")
+                        .get()
+                        .build()
+
+                    val response = okHttpClient.newCall(request).execute()
+                    if (!response.isSuccessful) {
+                        Log.e("SAAVN", "Error: ${response.code}")
+                        throw Exception("Error: ${response.code}")
+                    }
+
+                    response.body.string()
                 }
+
+                if (responseBody.isEmpty()) {
+                    Toast.makeText(requireContext(), "Empty response", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                parseSongDataJson(responseBody)
+
             } catch (e: Exception) {
                 Log.e("SAAVN", "Exception: ${e.message}")
             }
-        }.start()
+        }
     }
-    private fun parseSongDataJson(jsonString: String) {
+    private suspend fun parseSongDataJson(jsonString: String) {
         val list = ArrayList<SongItem>()
-        val json = JSONObject(jsonString)
-        val success = json.optBoolean("success",false)
-        if (!success) return
 
-        val data = json.getJSONObject("data")
-        val resultArray = data.getJSONArray("results")
+        withContext(Dispatchers.Default) {
+            val json = JSONObject(jsonString)
+            val success = json.optBoolean("success",false)
+            if (!success) return@withContext
 
-        for (i in 0 until resultArray.length()) {
-            val songObject = resultArray.getJSONObject(i)
+            val data = json.getJSONObject("data")
+            val resultArray = data.getJSONArray("results")
 
-            val id = songObject.optString("id")
-            val name = songObject.optString("name")
-            val duration = songObject.optInt("duration")
+            for (i in 0 until resultArray.length()) {
+                val songObject = resultArray.getJSONObject(i)
 
-            val imageArray = songObject.optJSONArray("image")
-            val image = mutableListOf<Image>()
-            if (imageArray != null) {
-                for (j in 0 until imageArray.length()) {
-                    val imageObject = imageArray.getJSONObject(j)
-                    image.add(
-                        Image(
-                            quality = imageObject?.optString("quality") ?: "",
-                            url = imageObject?.optString("url") ?: ""
+                val id = songObject.optString("id")
+                val name = songObject.optString("name")
+                val duration = songObject.optInt("duration")
+
+                val imageArray = songObject.optJSONArray("image")
+                val image = mutableListOf<Image>()
+                if (imageArray != null) {
+                    for (j in 0 until imageArray.length()) {
+                        val imageObject = imageArray.getJSONObject(j)
+                        image.add(
+                            Image(
+                                quality = imageObject?.optString("quality") ?: "",
+                                url = imageObject?.optString("url") ?: ""
+                            )
+                        )
+                    }
+                }
+
+                val downloadArray = songObject.optJSONArray("downloadUrl")
+                val download = mutableListOf<Download>()
+                if (downloadArray != null) {
+                    for (k in 0 until downloadArray.length()) {
+                        val downloadObject = downloadArray.getJSONObject(k)
+                        download.add(
+                            Download(
+                                quality = downloadObject?.optString("quality") ?: "",
+                                url = downloadObject?.optString("url") ?: ""
+                            )
+                        )
+                    }
+                }
+
+                val artistsObj = songObject.optJSONObject("artists")
+                val primaryArray = artistsObj?.optJSONArray("primary")
+                val primaryArtists = mutableListOf<Artists>()
+                for (i in 0 until (primaryArray?.length() ?: 0)) {
+                    val artistsObject = primaryArray?.getJSONObject(i)
+                    val artistsImage = artistsObject?.optJSONArray("image")
+
+                    primaryArtists.add(
+                        Artists(
+                            id = artistsObject?.optString("id") ?: "",
+                            name = artistsObject?.optString("name") ?: "",
+                            role = artistsObject?.optString("role") ?: "",
+                            image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
+                            type = artistsObject?.optString("type") ?: ""
                         )
                     )
                 }
+
+                list.add(SongItem(id, name, primaryArtists, image, duration, download))
             }
-
-            val downloadArray = songObject.optJSONArray("downloadUrl")
-            val download = mutableListOf<Download>()
-            if (downloadArray != null) {
-                for (k in 0 until downloadArray.length()) {
-                    val downloadObject = downloadArray.getJSONObject(k)
-                    download.add(
-                        Download(
-                            quality = downloadObject?.optString("quality") ?: "",
-                            url = downloadObject?.optString("url") ?: ""
-                        )
-                    )
-                }
-            }
-
-            val artistsObj = songObject.optJSONObject("artists")
-            val primaryArray = artistsObj?.optJSONArray("primary")
-            val primaryArtists = mutableListOf<Artists>()
-            for (i in 0 until (primaryArray?.length() ?: 0)) {
-                val artistsObject = primaryArray?.getJSONObject(i)
-                val artistsImage = artistsObject?.optJSONArray("image")
-
-                primaryArtists.add(
-                    Artists(
-                        id = artistsObject?.optString("id") ?: "",
-                        name = artistsObject?.optString("name") ?: "",
-                        role = artistsObject?.optString("role") ?: "",
-                        image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
-                        type = artistsObject?.optString("type") ?: ""
-                    )
-                )
-            }
-
-            list.add(SongItem(id, name, primaryArtists, image, duration, download))
         }
 
-        activity?.runOnUiThread {
+        withContext(Dispatchers.Main) {
             if (isAdded && view != null) {
                 binding.searchRecyclerView.post {
                     songList.clear()
@@ -566,52 +610,67 @@ class Search : Fragment() {
             }
         }
     }
-    fun fetchArtistsDataByQuery(query: String,root: String) {
-        Thread {
+    private fun fetchArtistsDataByQuery(query: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val client = OkHttpClient()
-                val request = Request.Builder()
-                    .url("https://jiosaavn-api-stableone.vercel.app/api/search/${root}?query=${query}&limit=30")
-                    .get()
-                    .build()
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val responseBody = response.body.string()
-                    parseArtistsDataJson(responseBody)
-                } else {
-                    Log.e("SAAVN", "Error: ${response.code}")
+                val responseBody = withContext(Dispatchers.IO) {
+                    val request = Request.Builder()
+                        .url("$apiUrl/search/artists?query=${query}&limit=30")
+                        .get()
+                        .build()
+
+                    val response = okHttpClient.newCall(request).execute()
+
+                    if (!response.isSuccessful) {
+                        Log.e("SAAVN", "Error: ${response.code}")
+                        throw Exception("Error: ${response.code}")
+                    }
+
+                    response.body.string()
                 }
+
+                if (responseBody.isEmpty()) {
+                    Toast.makeText(requireContext(), "Empty response", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                parseArtistsDataJson(responseBody)
+
             } catch (e: Exception) {
                 Log.e("SAAVN", "Exception: ${e.message}")
             }
-        }.start()
-    }
-    private fun parseArtistsDataJson(jsonString: String) {
-        val list = mutableListOf<Artists>()
-        val json = JSONObject(jsonString)
-        val success = json.optBoolean("success",false)
-        if (!success) return
-
-        val data = json.getJSONObject("data")
-        val resultArray = data.getJSONArray("results")
-
-        for (i in 0 until resultArray.length()) {
-            val artistObject = resultArray.getJSONObject(i)
-
-            val id = artistObject.optString("id")
-            val name = artistObject.optString("name")
-            val role = artistObject.optString("role")
-            val type = artistObject.optString("type")
-
-            val imageArray = artistObject.optJSONArray("image")
-            val imageUrl = if (imageArray != null && imageArray.length() > 0) {
-                imageArray.getJSONObject(1).optString("url")
-
-            } else ""
-
-            list.add(Artists(id, name, role, imageUrl,type))
         }
-        activity?.runOnUiThread {
+    }
+    private suspend fun parseArtistsDataJson(jsonString: String) {
+        val list = mutableListOf<Artists>()
+
+        withContext(Dispatchers.Default) {
+            val json = JSONObject(jsonString)
+            val success = json.optBoolean("success",false)
+            if (!success) return@withContext
+
+            val data = json.getJSONObject("data")
+            val resultArray = data.getJSONArray("results")
+
+            for (i in 0 until resultArray.length()) {
+                val artistObject = resultArray.getJSONObject(i)
+
+                val id = artistObject.optString("id")
+                val name = artistObject.optString("name")
+                val role = artistObject.optString("role")
+                val type = artistObject.optString("type")
+
+                val imageArray = artistObject.optJSONArray("image")
+                val imageUrl = if (imageArray != null && imageArray.length() > 0) {
+                    imageArray.getJSONObject(1).optString("url")
+
+                } else ""
+
+                list.add(Artists(id, name, role, imageUrl,type))
+            }
+        }
+
+        withContext(Dispatchers.Main) {
             if (isAdded && view != null) {
                 binding.artistsRecyclerView.post {
                     artistsList.clear()
@@ -621,51 +680,64 @@ class Search : Fragment() {
             }
         }
     }
-    fun fetchPlaylistsDataByQuery(query: String,root: String) {
-        Thread {
+    private fun fetchPlaylistsDataByQuery(query: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val client = OkHttpClient()
-                val request = Request.Builder()
-                    .url("https://jiosaavn-api-stableone.vercel.app/api/search/${root}?query=${query}&limit=30")
-                    .get()
-                    .build()
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val responseBody = response.body.string()
-                    parsePlaylistDataJson(responseBody)
-                } else {
-                    Log.e("SAAVN", "Error: ${response.code}")
+                val responseBody = withContext(Dispatchers.IO) {
+                    val request = Request.Builder()
+                        .url("$apiUrl/search/playlists?query=${query}&limit=30")
+                        .get()
+                        .build()
+                    val response = okHttpClient.newCall(request).execute()
+
+                    if (!response.isSuccessful) {
+                        Log.e("SAAVN", "Error: ${response.code}")
+                        throw Exception("Error: ${response.code}")
+                    }
+
+                    response.body.string()
                 }
+
+                if (responseBody.isEmpty()) {
+                    Toast.makeText(requireContext(), "Empty response", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                parsePlaylistDataJson(responseBody)
+
             } catch (e: Exception) {
                 Log.e("SAAVN", "Exception: ${e.message}")
             }
-        }.start()
+        }
     }
-    private fun parsePlaylistDataJson(jsonString: String) {
+    private suspend fun parsePlaylistDataJson(jsonString: String) {
         val list = mutableListOf<DataItem>()
-        val json = JSONObject(jsonString)
-        val success = json.optBoolean("success", false)
-        if (!success) return
 
-        val data = json.getJSONObject("data")
-        val songsArray = data.getJSONArray("results")
+        withContext(Dispatchers.Default) {
+            val json = JSONObject(jsonString)
+            val success = json.optBoolean("success", false)
+            if (!success) return@withContext
 
-        for (i in 0 until songsArray.length()) {
-            val song = songsArray.getJSONObject(i)
+            val data = json.getJSONObject("data")
+            val songsArray = data.getJSONArray("results")
 
-            val id = song.optString("id")
-            val name = song.optString("name")
+            for (i in 0 until songsArray.length()) {
+                val song = songsArray.getJSONObject(i)
 
-            val imageArray = song.optJSONArray("image")
-            val imageUrl = if (imageArray != null && imageArray.length() > 0) {
-                imageArray.getJSONObject(1).optString("url")
+                val id = song.optString("id")
+                val name = song.optString("name")
 
-            } else ""
+                val imageArray = song.optJSONArray("image")
+                val imageUrl = if (imageArray != null && imageArray.length() > 0) {
+                    imageArray.getJSONObject(1).optString("url")
 
-            list.add(DataItem(id, name, "", imageUrl))
+                } else ""
+
+                list.add(DataItem(id, name, "", imageUrl))
+            }
         }
 
-        activity?.runOnUiThread {
+        withContext(Dispatchers.Main) {
             if (isAdded && view != null) {
                 binding.playListRecyclerView.post {
                     playlistList.clear()
@@ -675,57 +747,71 @@ class Search : Fragment() {
             }
         }
     }
-    fun fetchAlbumsDataByQuery(query: String,root: String) {
-        Thread {
+    private fun fetchAlbumsDataByQuery(query: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val client = OkHttpClient()
-                val request = Request.Builder()
-                    .url("https://jiosaavn-api-stableone.vercel.app/api/search/${root}?query=${query}&limit=30")
-                    .get()
-                    .build()
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val responseBody = response.body.string()
-                    parseAlbumsDataJson(responseBody)
-                } else {
-                    Log.e("SAAVN", "Error: ${response.code}")
+                val responseBody = withContext(Dispatchers.IO) {
+                    val request = Request.Builder()
+                        .url("$apiUrl/search/albums?query=${query}&limit=30")
+                        .get()
+                        .build()
+
+                    val response = okHttpClient.newCall(request).execute()
+
+                    if (!response.isSuccessful) {
+                        Log.e("SAAVN", "Error: ${response.code}")
+                        throw Exception("Error: ${response.code}")
+                    }
+
+                    response.body.string()
                 }
+
+                if (responseBody.isEmpty()) {
+                    Toast.makeText(requireContext(), "Empty response", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                parseAlbumsDataJson(responseBody)
+
             } catch (e: Exception) {
                 Log.e("SAAVN", "Exception: ${e.message}")
             }
-        }.start()
+        }
     }
-    private fun parseAlbumsDataJson(jsonString: String) {
+    private suspend fun parseAlbumsDataJson(jsonString: String) {
         val list = mutableListOf<DataItem>()
-        val json = JSONObject(jsonString)
-        val success = json.optBoolean("success", false)
-        if (!success) return
 
-        val data = json.getJSONObject("data")
-        val songsArray = data.getJSONArray("results")
+        withContext(Dispatchers.Default) {
+            val json = JSONObject(jsonString)
+            val success = json.optBoolean("success", false)
+            if (!success) return@withContext
 
-        for (i in 0 until songsArray.length()) {
-            val song = songsArray.getJSONObject(i)
+            val data = json.getJSONObject("data")
+            val songsArray = data.getJSONArray("results")
 
-            val id = song.optString("id")
-            val name = song.optString("name")
+            for (i in 0 until songsArray.length()) {
+                val song = songsArray.getJSONObject(i)
 
-            val imageArray = song.optJSONArray("image")
-            val imageUrl = if (imageArray != null && imageArray.length() > 0) {
-                imageArray.getJSONObject(1).optString("url")
+                val id = song.optString("id")
+                val name = song.optString("name")
 
-            } else ""
+                val imageArray = song.optJSONArray("image")
+                val imageUrl = if (imageArray != null && imageArray.length() > 0) {
+                    imageArray.getJSONObject(1).optString("url")
 
-            val artistsObj = song.optJSONObject("artists")
-            val primaryArtists = artistsObj?.optJSONArray("primary")
-            val artistName = if (primaryArtists != null && primaryArtists.length() > 0) {
-                primaryArtists.getJSONObject(0).optString("name")
-            } else ""
+                } else ""
 
-            list.add(DataItem(id, name, artistName, imageUrl))
+                val artistsObj = song.optJSONObject("artists")
+                val primaryArtists = artistsObj?.optJSONArray("primary")
+                val artistName = if (primaryArtists != null && primaryArtists.length() > 0) {
+                    primaryArtists.getJSONObject(0).optString("name")
+                } else ""
+
+                list.add(DataItem(id, name, artistName, imageUrl))
+            }
         }
 
-        activity?.runOnUiThread {
+        withContext(Dispatchers.Main) {
             if (isAdded && view != null) {
                 binding.albumsRecyclerView.post {
                     albumList.clear()
@@ -742,73 +828,18 @@ class Search : Fragment() {
             ?: "Unknown Artist"              // fallback if null or empty
 
         songName.text = Html.fromHtml(songItem?.name ?: "", Html.FROM_HTML_MODE_LEGACY)
-        artistName.text = artistsName
-        Picasso.get().load(songItem?.image[1]?.url).into(songImage)
-        setDynamicBackground(songItem?.image[1]?.url ?: "" ,songImage,background)
-
+        artistName.text = Html.fromHtml(artistsName,Html.FROM_HTML_MODE_LEGACY)
+        //Picasso.get().load(songItem?.image[1]?.url).into(songImage)
+        //setDynamicBackground(songItem?.image[1]?.url ?: "" ,songImage,background)
     }
     private fun updatePlayPauseIcon(isPlaying: Boolean) {
         if (isPlaying) {
             playPauseButton.setImageResource(R.drawable.pausebutton)
+            lottieAnimationView.playAnimation()
         } else {
             playPauseButton.setImageResource(R.drawable.playbutton)
+            lottieAnimationView.pauseAnimation()
         }
-    }
-    private fun setDynamicBackground(imageUrl: String, imageView: AppCompatImageView, backgroundView: AppCompatImageView) {
-        Glide.with(imageView.context)
-            .asBitmap()
-            .load(imageUrl)
-            .override(500, 500)
-            .into(object : CustomTarget<Bitmap>() {
-                override fun onResourceReady(resource: Bitmap, transition: com.bumptech.glide.request.transition.Transition<in Bitmap>?) {
-
-                    Palette.from(resource).generate { palette ->
-                        val darkVibrant = palette?.getDarkVibrantColor(Color.DKGRAY) ?: Color.DKGRAY
-                        val vibrant = palette?.getVibrantColor(Color.BLACK) ?: Color.BLACK
-
-                        val baseGradient = GradientDrawable(
-                            GradientDrawable.Orientation.TOP_BOTTOM,
-                            intArrayOf(
-                                ColorUtils.setAlphaComponent(darkVibrant, 180),
-                                ColorUtils.setAlphaComponent(vibrant, 180)
-                            )
-                        ).apply {
-                            gradientType = GradientDrawable.LINEAR_GRADIENT
-                            cornerRadius = 0f
-                        }
-
-                        val glassOverlay = GradientDrawable().apply {
-                            colors = intArrayOf(
-                                ColorUtils.setAlphaComponent(Color.WHITE, 90),
-                                ColorUtils.setAlphaComponent(Color.WHITE, 20)
-                            )
-                            gradientType = GradientDrawable.LINEAR_GRADIENT
-                            orientation = GradientDrawable.Orientation.TOP_BOTTOM
-                        }
-
-                        val glowOverlay = GradientDrawable().apply {
-                            shape = GradientDrawable.RECTANGLE
-                            gradientType = GradientDrawable.RADIAL_GRADIENT
-                            gradientRadius = 700f
-                            colors = intArrayOf(
-                                ColorUtils.setAlphaComponent(vibrant, 100),
-                                Color.TRANSPARENT
-                            )
-                            setGradientCenter(0.5f, 0.3f)
-                        }
-
-                        val layerDrawable = LayerDrawable(arrayOf(glowOverlay, baseGradient, glassOverlay))
-                        layerDrawable.setLayerInset(0, -50, -50, -50, -50)
-
-                        backgroundView.background = layerDrawable
-                        backgroundView.background.alpha = 230
-                    }
-                }
-
-                override fun onLoadCleared(placeholder: Drawable?) {
-                    // Optional cleanup
-                }
-            })
     }
     private fun clearAllSearchResults() {
         songList.clear()
@@ -831,10 +862,10 @@ class Search : Fragment() {
         val userID = auth.currentUser?.uid
         val favSongRef = database.child(userID!!).child("Favourites").child("Songs")
 
-        favSongRef.addValueEventListener(object : ValueEventListener {
+        favSongRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
-                    val favoriteIds = snapshot.children.mapNotNull { it.key }
+                    val favoriteIds = snapshot.children.mapNotNull { it.key }.toSet()
 
                     songList.forEach { song ->
                         song.isFav = favoriteIds.contains(song.id)

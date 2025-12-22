@@ -88,7 +88,7 @@
             app:layout_constraintTop_toBottomOf="@id/recentSearchText"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/miniPlayer"/>
+            app:layout_constraintBottom_toBottomOf="parent"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/searchRecyclerView"
@@ -96,13 +96,12 @@
             android:layout_height="0dp"
             android:clipToPadding="false"
             android:orientation="vertical"
-            android:paddingBottom="10dp"
             android:layout_marginTop="12dp"
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             tools:listitem="@layout/item_suggestions"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/miniPlayer"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/searchCategoryRecyclerView" />
 
         <androidx.recyclerview.widget.RecyclerView
@@ -112,14 +111,13 @@
             android:clipToPadding="false"
             android:orientation="vertical"
             android:layout_marginTop="12dp"
-            android:paddingBottom="10dp"
             android:paddingStart="35dp"
             android:paddingEnd="0dp"
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             tools:listitem="@layout/item_artists"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/miniPlayer"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/searchCategoryRecyclerView"/>
 
         <androidx.recyclerview.widget.RecyclerView
@@ -129,14 +127,13 @@
             android:clipToPadding="false"
             android:orientation="vertical"
             android:layout_marginTop="12dp"
-            android:paddingBottom="10dp"
             android:paddingStart="25dp"
             android:paddingEnd="0dp"
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             tools:listitem="@layout/item_artists"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/miniPlayer"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/searchCategoryRecyclerView"/>
 
         <androidx.recyclerview.widget.RecyclerView
@@ -146,14 +143,13 @@
             android:clipToPadding="false"
             android:orientation="vertical"
             android:layout_marginTop="12dp"
-            android:paddingBottom="10dp"
             android:paddingStart="25dp"
             android:paddingEnd="0dp"
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             tools:listitem="@layout/item_artists"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/miniPlayer"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/searchCategoryRecyclerView"/>
 
         <include layout="@layout/mini_player"
@@ -161,6 +157,8 @@
             android:visibility="gone"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
 </FrameLayout>

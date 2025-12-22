@@ -33,7 +33,7 @@ class SuggestionSongAdapter(private val songList: MutableList<SongItem>,private 
             .takeIf { it.isNotEmpty() }     // only proceed if list not empty
             ?.joinToString(", ") { it.name } // join all artist names
             ?: "Unknown Artist"
-        "Artist • $artistsName".also { holder.artistName?.text = it }
+        "Artist • ${Html.fromHtml(artistsName,Html.FROM_HTML_MODE_LEGACY)}".also { holder.artistName?.text = it }
         val duration = formatDuration(songList[position].duration)
         holder.duration?.text = duration
 

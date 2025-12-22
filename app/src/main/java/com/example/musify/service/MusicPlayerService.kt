@@ -72,6 +72,7 @@ class MusicPlayerService : LifecycleService() {
     val isPlayingLive = MutableLiveData(false)
     val progressLive = MutableLiveData(0)
     val durationLive = MutableLiveData(0)
+    val bufferLive = MutableLiveData(0)
     private val handler = Handler(Looper.getMainLooper())
     private val progressRefreshMs = 500L
     val isShuffle = MutableLiveData(false)
@@ -109,10 +110,10 @@ class MusicPlayerService : LifecycleService() {
     private fun initPlayer() {
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                50000,  // minBufferMs: total buffer duration before rebuffering (50s)
+                30000,  // minBufferMs: total buffer duration before rebuffering (30s)
                 60000,  // maxBufferMs: total buffer size (60s)
-                2500,   // bufferForPlaybackMs: how much to buffer before starting playback (2.5s)
-                5000    // bufferForPlaybackAfterRebufferMs: after buffering again (5s)
+                1500,   // bufferForPlaybackMs: how much to buffer before starting playback (1.5s)
+                3000    // bufferForPlaybackAfterRebufferMs: after buffering again (3s)
             )
             .build()
         player = ExoPlayer.Builder(this)
@@ -133,6 +134,7 @@ class MusicPlayerService : LifecycleService() {
                     val duration = player.duration.coerceAtLeast(song.duration.toLong()) // Use actual player duration if available
 
                     durationLive.postValue(duration.toInt())
+                    bufferLive.postValue(player.bufferedPosition.toInt())
 
                     val bitmap = BitmapFactory.decodeResource(resources, R.drawable.playlist)
                     updateMetadata(song, bitmap)
@@ -152,6 +154,11 @@ class MusicPlayerService : LifecycleService() {
                 CoroutineScope(Dispatchers.Main).launch {
                     updateNotification()
                 }
+            }
+
+            override fun onIsLoadingChanged(isLoading: Boolean) {
+                super.onIsLoadingChanged(isLoading)
+                bufferLive.postValue(player.bufferedPosition.toInt())
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -542,6 +549,7 @@ class MusicPlayerService : LifecycleService() {
             .takeIf { it.isNotEmpty() }     // only proceed if list not empty
             ?.joinToString(", ") { it.name } // join all artist names
             ?: "Unknown Artist"
+        val artistsNameList = Html.fromHtml(artistsName.ifEmpty { "Unknown Artist" },Html.FROM_HTML_MODE_LEGACY)
         updateMetadata(song, bitmap)
 
         val playbackState = PlaybackStateCompat.Builder()
@@ -563,7 +571,7 @@ class MusicPlayerService : LifecycleService() {
 
         val notifBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(songName)
-            .setContentText(artistsName)
+            .setContentText(artistsNameList)
             .setSmallIcon(R.drawable.headset_image)
             .setLargeIcon(bitmap)
             .setContentIntent(openPending)
@@ -595,11 +603,12 @@ class MusicPlayerService : LifecycleService() {
             .takeIf { it.isNotEmpty() }     // only proceed if list not empty
             ?.joinToString(", ") { it.name } // join all artist names
             ?: "Unknown Artist"
+        val artistsNameList = Html.fromHtml(artistsName.ifEmpty { "Unknown Artist" },Html.FROM_HTML_MODE_LEGACY)
 
         mediaSession.setMetadata(
             android.support.v4.media.MediaMetadataCompat.Builder()
                 .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_TITLE, songName.toString())
-                .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ARTIST, artistsName)
+                .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ARTIST, artistsNameList.toString())
                 .putBitmap(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
                 .putLong(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_DURATION, duration)
                 .build()
@@ -611,10 +620,12 @@ class MusicPlayerService : LifecycleService() {
 
         val duration = player.duration.coerceAtLeast(song.duration.toLong())
         val position = player.currentPosition
+        val buffered = player.bufferedPosition
 
         // Update LiveData
         durationLive.postValue(duration.toInt())
         progressLive.postValue(position.toInt())
+        bufferLive.postValue(buffered.toInt())
 
         // Update playback state
         val playbackState = PlaybackStateCompat.Builder()
