@@ -5,15 +5,16 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.text.Html
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.AnimationUtils
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
@@ -23,6 +24,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.airbnb.lottie.LottieAnimationView
@@ -151,7 +153,18 @@ class ArtistActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(binding.root)
 
-        enableEdgeToEdgeWithInsets(binding.root)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+
+        WindowInsetsControllerCompat(
+            window,
+            window.decorView
+        ).isAppearanceLightNavigationBars = false
+
+        handleBottomNavPosition()
 
         setStatusBarIconsTheme(this)
 
@@ -408,13 +421,17 @@ class ArtistActivity : AppCompatActivity() {
                             "isFavourite" to true
                         )
                         favouriteReference.setValue(songData).addOnSuccessListener {
+                            favouriteIcon.isSelected = true
                             Toast.makeText(this@ArtistActivity, "Added To Favourite", Toast.LENGTH_SHORT).show()
                         }.addOnFailureListener {
+                            favouriteIcon.isSelected = false
                             Toast.makeText(this@ArtistActivity, "Failed To Add in Favourite", Toast.LENGTH_SHORT).show()
                         }
                     } else {
-                        favouriteReference.removeValue()
-                        Toast.makeText(this@ArtistActivity, "Removed From Favourite", Toast.LENGTH_SHORT).show()
+                        favouriteReference.removeValue().addOnSuccessListener {
+                            favouriteIcon.isSelected = false
+                            Toast.makeText(this@ArtistActivity, "Removed From Favourite", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             }
@@ -539,19 +556,30 @@ class ArtistActivity : AppCompatActivity() {
             lottieAnimationView.pauseAnimation()
         }
     }
-    private fun enableEdgeToEdgeWithInsets(rootView: View) {
-        val activity = rootView.context as ComponentActivity
-        WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+    private fun Int.dpToPx(view: View): Int =
+        (this * view.resources.displayMetrics.density).toInt()
+    private fun handleBottomNavPosition() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
 
-        ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val navBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
 
-            rootView.setPadding(
-                rootView.paddingLeft,
-                rootView.paddingTop,
-                rootView.paddingRight,
-                systemBars.bottom
-            )
+            // Typical values:
+            // Gesture: 16–24dp
+            // 3-button: 48–80dp
+
+            val threshold = 40.dpToPx(binding.root)
+
+            binding.main.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                bottomMargin = if (navBarHeight > threshold) {
+                    navBarHeight   // 3-button → move up
+                } else {
+                    val marginInDp = 12
+                    val scale = resources.displayMetrics.density
+                    val marginInPx = (marginInDp * scale).toInt()
+                    miniPlayer.setPadding(0,0,0,marginInPx)
+                    0              // Gesture → stay at bottom
+                }
+            }
 
             insets
         }

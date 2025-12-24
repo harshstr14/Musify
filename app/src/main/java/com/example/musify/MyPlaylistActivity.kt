@@ -8,15 +8,16 @@ import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.text.Html
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.AnimationUtils
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
@@ -27,6 +28,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -43,7 +45,6 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.GenericTypeIndicator
 import com.google.firebase.database.MutableData
 import com.google.firebase.database.Transaction
 import com.google.firebase.database.ValueEventListener
@@ -160,7 +161,18 @@ class MyPlaylistActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(binding.root)
 
-        enableEdgeToEdgeWithInsets(binding.root)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+
+        WindowInsetsControllerCompat(
+            window,
+            window.decorView
+        ).isAppearanceLightNavigationBars = false
+
+        handleBottomNavPosition()
 
         setStatusBarIconsTheme(this)
 
@@ -254,7 +266,6 @@ class MyPlaylistActivity : AppCompatActivity() {
                 override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                     val position = viewHolder.bindingAdapterPosition
                     if (position != RecyclerView.NO_POSITION) {
-                        val songID = songList[position].id
 
                         val playListRef = database.child(userID.toString())
                             .child("Favourites")
@@ -264,12 +275,15 @@ class MyPlaylistActivity : AppCompatActivity() {
                         playListRef.runTransaction(object : Transaction.Handler {
                             override fun doTransaction(currentData: MutableData): Transaction.Result {
                                 val songsNode = currentData.child("Songs")
-                                val songs = (songsNode.getValue(object : GenericTypeIndicator<Map<String, Any>>() {}) ?: emptyMap())
-                                    .toMutableMap()
+                                val songsList = when (val value = songsNode.value) {
+                                    is List<*> -> value.toMutableList()
+                                    null -> mutableListOf()
+                                    else -> mutableListOf()
+                                }
 
-                                songs.remove(songID)
+                                songsList.removeAt(position)
 
-                                songsNode.value = songs
+                                songsNode.value = songsList
 
                                 val totalSongsNode = currentData.child("total Songs")
                                 val totalSongs = (totalSongsNode.getValue(Long::class.java) ?: 0L)
@@ -289,6 +303,8 @@ class MyPlaylistActivity : AppCompatActivity() {
                                     else -> {
                                         songList.removeAt(position)
                                         songAdapter.notifyItemRemoved(position)
+                                        val totalSongs = songList.size
+                                        "Songs : $totalSongs".also { binding.totalSongText.text = it }
                                         binding.songRecyclerView.itemAnimator?.apply {
                                             removeDuration = 250
                                         }
@@ -366,17 +382,22 @@ class MyPlaylistActivity : AppCompatActivity() {
                 val songsReference = database.child(userID).child("Favourites").child("Songs")
                 songsReference.get().addOnSuccessListener { songsSnapshot ->
                     if (songsSnapshot.exists()) {
-                        val songIDList = ArrayList<String>()
-                        for (songSnap in songsSnapshot.children) {
-                            val songID  = songSnap.child("id").getValue(String::class.java)
-                            if (songID != null) songIDList.add(songID)
-                        }
-
                         songList.clear()
-                        if (songIDList.isEmpty()) onDataLoaded() else fetchSongsByIDs(songIDList)
+
+                        val songIDList = songsSnapshot.children
+                            .mapNotNull { it.child("id").getValue(String::class.java) }
+
+                        if (songIDList.isEmpty()) {
+                            onDataLoaded()
+                        } else {
+                            fetchSongsByIDs(songIDList)
+                        }
                     } else {
                         onDataLoaded()
                     }
+                }.addOnFailureListener { e ->
+                    Log.e("Firebase", "Failed to load favourite songs", e)
+                    onDataLoaded()
                 }
             } else {
                 val playListRef = database.child(userID).child("Favourites")
@@ -396,65 +417,42 @@ class MyPlaylistActivity : AppCompatActivity() {
                     }
 
                     val songsSnapshot = snapshot.child("Songs")
-                    val songIDList = ArrayList<String>()
-                    for (songSnap in songsSnapshot.children) {
-                        val songID = songSnap.child("id").getValue(String::class.java)
-                        if (songID != null) songIDList.add(songID)
-                    }
+                    val songIDList = songsSnapshot.children
+                        .mapNotNull { it.child("id").getValue(String::class.java) }
 
                     songList.clear()
                     if (songIDList.isEmpty()) onDataLoaded() else fetchSongsByIDs(songIDList)
+
+                }.addOnFailureListener { e ->
+                    Log.e("Firebase", "Failed to load playlist songs", e)
+                    onDataLoaded()
                 }
             }
         }
     }
     private fun fetchSongsByIDs(songIDs: List<String>) {
         lifecycleScope.launch {
-            val tempList = withContext(Dispatchers.IO) {
-                val list = mutableListOf<SongItem>()
+            val initialLoadCount = 20.coerceAtMost(songIDs.size)
+            val firstBatchIDs = songIDs.take(initialLoadCount)
+            val remainingIDs = songIDs.drop(initialLoadCount)
 
-                try {
-                    for (songID in songIDs) {
-
-                        val request = Request.Builder()
-                            .url("$apiUrl/songs/$songID")
-                            .get()
-                            .build()
-
-                        val response = okHttpClient.newCall(request).execute()
-
-                        if (response.isSuccessful) {
-                            val responseBody = response.body.string()
-
-                            if (responseBody.isNotEmpty()) {
-                                val songItem = parseSongJson(responseBody)
-                                if (songItem != null) {
-                                    list.add(songItem)
-                                } else {
-                                    Log.e("SAAVN_PARSE", "Failed to parse song for ID: $songID")
-                                }
-                            } else {
-                                Log.e("SAAVN", "Empty response for ID: $songID")
-                            }
-                        } else {
-                            Log.e("SAAVN", "Error: ${response.code}")
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("SAAVN", "Exception: ${e.message}", e)
-                }
-
-                list
-            }
+            // Load first 10 songs
+            val firstBatch = withContext(Dispatchers.IO) { fetchSongs(firstBatchIDs) }
 
             songList.clear()
-            songList.addAll(tempList)
-            songAdapter.notifyDataSetChanged()
+            songList.addAll(firstBatch)
+            songAdapter.notifyItemRangeInserted(0, firstBatch.size)
+            updateSongStats()
+            onDataLoaded()
 
-            val totalSongs = songList.size
-            val totalDuration = songList.sumOf { it.duration }
-            "Songs : $totalSongs".also { binding.totalSongText.text = it }
-            binding.durationText.text = formatDuration(totalDuration)
+            // Load remaining songs in the background
+            if (remainingIDs.isNotEmpty()) {
+                val remainingBatch = withContext(Dispatchers.IO) { fetchSongs(remainingIDs) }
+                val startIndex = songList.size
+                songList.addAll(remainingBatch)
+                songAdapter.notifyItemRangeInserted(startIndex, remainingBatch.size)
+                updateSongStats()
+            }
 
             val userID = auth.currentUser?.uid
             if (userID == null) {
@@ -475,8 +473,6 @@ class MyPlaylistActivity : AppCompatActivity() {
                     Log.e("FAV", "Error loading favourites", error.toException())
                 }
             })
-
-            onDataLoaded()
 
             val anim = AnimationUtils.loadAnimation(this@MyPlaylistActivity,R.anim.nav_item_click)
 
@@ -505,6 +501,32 @@ class MyPlaylistActivity : AppCompatActivity() {
                 musicPlayerService?.isShuffle?.value = !(musicPlayerService?.isShuffle?.value ?: false)
             }
         }
+    }
+    private fun updateSongStats() {
+        val totalSongs = songList.size
+        val totalDuration = songList.sumOf { it.duration }
+        binding.totalSongText.text = "Songs : $totalSongs"
+        binding.durationText.text = formatDuration(totalDuration)
+    }
+    private fun fetchSongs(ids: List<String>): List<SongItem> {
+        val list = mutableListOf<SongItem>()
+        try {
+            for (songID in ids) {
+                val request = Request.Builder()
+                    .url("$apiUrl/songs/$songID")
+                    .get()
+                    .build()
+                val response = okHttpClient.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val responseBody = response.body.string()
+                    val songItem = parseSongJson(responseBody)
+                    if (songItem != null) list.add(songItem)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SAAVN", "Exception fetching songs", e)
+        }
+        return list
     }
     private fun parseSongJson(jsonString: String): SongItem? {
         val json = JSONObject(jsonString)
@@ -626,19 +648,30 @@ class MyPlaylistActivity : AppCompatActivity() {
             }
             .start()
     }
-    private fun enableEdgeToEdgeWithInsets(rootView: View) {
-        val activity = rootView.context as ComponentActivity
-        WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+    private fun Int.dpToPx(view: View): Int =
+        (this * view.resources.displayMetrics.density).toInt()
+    private fun handleBottomNavPosition() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
 
-        ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val navBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
 
-            rootView.setPadding(
-                rootView.paddingLeft,
-                rootView.paddingTop,
-                rootView.paddingRight,
-                systemBars.bottom
-            )
+            // Typical values:
+            // Gesture: 16–24dp
+            // 3-button: 48–80dp
+
+            val threshold = 40.dpToPx(binding.root)
+
+            binding.main.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                bottomMargin = if (navBarHeight > threshold) {
+                    navBarHeight   // 3-button → move up
+                } else {
+                    val marginInDp = 12
+                    val scale = resources.displayMetrics.density
+                    val marginInPx = (marginInDp * scale).toInt()
+                    miniPlayer.setPadding(0,0,0,marginInPx)
+                    0              // Gesture → stay at bottom
+                }
+            }
 
             insets
         }

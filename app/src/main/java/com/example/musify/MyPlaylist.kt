@@ -10,27 +10,18 @@ import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.IBinder
 import android.text.Html
-import android.text.SpannableString
-import android.text.style.AbsoluteSizeSpan
-import android.text.style.ForegroundColorSpan
 import android.util.Log
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.OvershootInterpolator
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
-import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.app.ActivityOptionsCompat
-import androidx.core.content.ContextCompat
-import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.toDrawable
-import androidx.core.view.get
-import androidx.core.view.size
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -253,44 +244,14 @@ class MyPlaylist : Fragment() {
             .setDuration(400)
             .start()
 
-        binding.plusIcon.setOnClickListener { view ->
-            val popup = PopupMenu(requireContext(),view, Gravity.END,0,R.style.CustomPopupThemeOverlay)
-            popup.menuInflater.inflate(R.menu.plus_menu, popup.menu)
+        binding.plusIcon.setOnClickListener {
+            createPlaylist()
+            bottomSheetDialog.show()
+        }
 
-            val typeface = ResourcesCompat.getFont(
-                requireContext(),
-                R.font.merriweathersans_regular
-            )!!
-
-            val textSizeSp = 15
-            val textColor = ContextCompat.getColor(requireContext(), R.color.white)
-
-            for (i in 0 until popup.menu.size) {
-                val item = popup.menu[i]
-                val title = SpannableString(item.title)
-                title.setSpan(CustomTypefaceSpan(typeface), 0, title.length, 0)
-                title.setSpan(AbsoluteSizeSpan(textSizeSp, true), 0, title.length, 0)
-                title.setSpan(ForegroundColorSpan(textColor), 0, title.length, 0)
-
-                item.title = title
-            }
-
-            popup.setOnMenuItemClickListener { item ->
-                when(item.itemId) {
-                    R.id.action_add -> {
-                        importPlaylist()
-                        bottomSheetDialog0.show()
-                        true
-                    }
-                    R.id.action_create -> {
-                        createPlaylist()
-                        bottomSheetDialog.show()
-                        true
-                    }
-                    else -> false
-                }
-            }
-            popup.show()
+        binding.spotifyLogo.setOnClickListener {
+            importPlaylist()
+            bottomSheetDialog0.show()
         }
 
         loadPlaylists()

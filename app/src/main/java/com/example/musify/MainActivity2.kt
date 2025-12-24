@@ -2,6 +2,7 @@ package com.example.musify
 
 import android.app.Activity
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.animation.AnimationUtils
@@ -10,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updateLayoutParams
@@ -25,9 +27,18 @@ class MainActivity2 : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(binding.root)
 
-        binding.root.post {
-            handleBottomNavPosition()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
         }
+
+        WindowInsetsControllerCompat(
+            window,
+            window.decorView
+        ).isAppearanceLightNavigationBars = false
+
+        handleBottomNavPosition()
 
         setStatusBarIconsTheme(this)
 
@@ -127,7 +138,7 @@ class MainActivity2 : AppCompatActivity() {
         binding.navBarMyPlayList.isSelected = false
     }
     private fun handleBottomNavPosition() {
-        ViewCompat.getRootWindowInsets(binding.root)?.let { insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
 
             val navBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
 
@@ -150,6 +161,8 @@ class MainActivity2 : AppCompatActivity() {
                 }
                 binding.bottomNavBar.setPadding(0,0,0,12.dpToPx(binding.bottomNavBar))
             }
+
+            insets
         }
     }
     private fun setStatusBarIconsTheme(activity: Activity) {

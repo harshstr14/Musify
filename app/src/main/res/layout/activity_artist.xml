@@ -233,11 +233,12 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/singlesRecyclerView"
                 android:layout_width="match_parent"
-                android:layout_height="165dp"
+                android:layout_height="175dp"
                 android:layout_marginTop="5dp"
                 android:clipToPadding="false"
                 android:paddingStart="18dp"
                 android:paddingEnd="0dp"
+                android:paddingBottom="15dp"
                 android:orientation="horizontal"
                 android:visibility="gone"
                 android:nestedScrollingEnabled="false"

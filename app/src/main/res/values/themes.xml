@@ -22,11 +22,19 @@
 
     <style name="CustomPopupThemeOverlay" parent="ThemeOverlay.Material3">
         <item name="popupMenuStyle">@style/CustomPopupMenuStyle</item>
+        <item name="android:popupBackground">@drawable/popup_bg</item>
+        <item name="dropDownListViewStyle">@style/PopupListViewStyle</item>
         <item name="android:textColor">#F8F9FA</item>
         <item name="android:textColorPrimary">#F8F9FA</item>
         <item name="android:textColorSecondary">#F8F9FA</item>
     </style>
-    
+
+    <style name="PopupListViewStyle" parent="Widget.AppCompat.ListView.DropDown">
+        <item name="android:background">@drawable/popup_bg</item>
+        <item name="android:divider">@null</item>
+        <item name="android:dividerHeight">0dp</item>
+    </style>
+
     <style name="PopupMenuTextAppearance" parent="TextAppearance.Material3.BodyMedium">
         <item name="fontFamily">@font/merriweathersans_semibold</item>
         <item name="android:textColor">#F8F9FA</item>
