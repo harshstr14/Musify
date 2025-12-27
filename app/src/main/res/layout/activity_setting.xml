@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#121212"
+    tools:context=".SettingActivity">
+
+    <TextView
+        android:id="@+id/textView13"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:fontFamily="@font/chalesrientta"
+        android:text="Settings"
+        android:layout_marginTop="40dp"
+        android:textColor="#F8F9FA"
+        android:textSize="20sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/updateIcon"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="9dp"
+        app:layout_constraintEnd_toStartOf="@id/textView1"
+        app:layout_constraintTop_toTopOf="@id/textView1"
+        app:srcCompat="@drawable/update_icon" />
+
+    <TextView
+        android:id="@+id/textView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/merriweathersans_semibold"
+        android:text="Updates"
+        android:textColor="#F8F9FA"
+        android:textSize="16sp"
+        android:layout_marginTop="28dp"
+        android:layout_marginStart="32dp"
+        app:layout_constraintStart_toStartOf="@+id/textView13"
+        app:layout_constraintTop_toBottomOf="@+id/textView13" />
+
+    <TextView
+        android:id="@id/textView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/merriweathersans_regular"
+        android:text="Check for new updates"
+        android:textColor="#707B81"
+        android:textSize="12sp"
+        android:layout_marginTop="3dp"
+        app:layout_constraintStart_toStartOf="@+id/textView1"
+        app:layout_constraintTop_toBottomOf="@+id/textView1" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="10dp"
+        app:layout_constraintEnd_toStartOf="@id/textView3"
+        app:layout_constraintTop_toTopOf="@id/textView3"
+        app:srcCompat="@drawable/earphone_icon" />
+
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/merriweathersans_semibold"
+        android:text="Streaming Quality"
+        android:textColor="#F8F9FA"
+        android:textSize="16sp"
+        android:layout_marginTop="18dp"
+        app:layout_constraintStart_toStartOf="@+id/textView2"
+        app:layout_constraintTop_toBottomOf="@+id/textView2" />
+
+    <TextView
+        android:id="@id/textView4"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/merriweathersans_regular"
+        android:text="Quality of audiio files streamed from \nonlinesources"
+        android:textColor="#707B81"
+        android:textSize="12sp"
+        android:layout_marginTop="3dp"
+        app:layout_constraintStart_toStartOf="@+id/textView3"
+        app:layout_constraintTop_toBottomOf="@+id/textView3" />
+
+    <androidx.appcompat.widget.AppCompatSpinner
+        android:id="@+id/qualityAdapter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minHeight="40dp"
+        android:background="@drawable/spinner_background"
+        android:popupBackground="@drawable/spinner_popup_background"
+        android:spinnerMode="dropdown"
+        app:layout_constraintBottom_toBottomOf="@+id/textView4"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/textView4"
+        app:layout_constraintTop_toTopOf="@id/textView3" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/resetIcon"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="10dp"
+        app:layout_constraintEnd_toStartOf="@id/textView5"
+        app:layout_constraintTop_toTopOf="@id/textView5"
+        app:srcCompat="@drawable/delete_icon" />
+
+    <TextView
+        android:id="@+id/textView5"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/merriweathersans_semibold"
+        android:text="Reset Musify App"
+        android:textColor="#F8F9FA"
+        android:textSize="16sp"
+        android:layout_marginTop="18dp"
+        app:layout_constraintStart_toStartOf="@+id/textView4"
+        app:layout_constraintTop_toBottomOf="@+id/textView4" />
+
+    <TextView
+        android:id="@id/textView6"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/merriweathersans_regular"
+        android:text="Clear all your data and reset the app to its default\nstate"
+        android:textColor="#707B81"
+        android:textSize="12sp"
+        android:layout_marginTop="3dp"
+        app:layout_constraintStart_toStartOf="@+id/textView5"
+        app:layout_constraintTop_toBottomOf="@+id/textView5" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/deleteIcon"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="9dp"
+        app:layout_constraintEnd_toStartOf="@id/textView7"
+        app:layout_constraintTop_toTopOf="@id/textView7"
+        app:srcCompat="@drawable/account_icon" />
+
+    <TextView
+        android:id="@+id/textView7"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/merriweathersans_semibold"
+        android:text="Delete Account"
+        android:textColor="#F8F9FA"
+        android:textSize="16sp"
+        android:layout_marginTop="18dp"
+        app:layout_constraintStart_toStartOf="@+id/textView6"
+        app:layout_constraintTop_toBottomOf="@+id/textView6" />
+
+    <TextView
+        android:id="@id/textView8"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/merriweathersans_regular"
+        android:text="Permanently delete your account from the \nmusify app"
+        android:textColor="#707B81"
+        android:textSize="12sp"
+        android:layout_marginTop="3dp"
+        app:layout_constraintStart_toStartOf="@+id/textView7"
+        app:layout_constraintTop_toBottomOf="@+id/textView7" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/githubIcon"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="9dp"
+        app:layout_constraintEnd_toStartOf="@id/textView9"
+        app:layout_constraintTop_toTopOf="@id/textView9"
+        app:srcCompat="@drawable/github_icon" />
+
+    <TextView
+        android:id="@+id/textView9"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/merriweathersans_semibold"
+        android:text="Git Hub"
+        android:textColor="#F8F9FA"
+        android:textSize="16sp"
+        android:layout_marginTop="18dp"
+        android:clickable="true"
+        android:focusable="true"
+        app:layout_constraintStart_toStartOf="@+id/textView8"
+        app:layout_constraintTop_toBottomOf="@+id/textView8" />
+
+    <TextView
+        android:id="@id/textView10"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/merriweathersans_regular"
+        android:text="For more information about musify app"
+        android:textColor="#707B81"
+        android:textSize="12sp"
+        android:layout_marginTop="3dp"
+        android:clickable="true"
+        android:focusable="true"
+        app:layout_constraintStart_toStartOf="@+id/textView9"
+        app:layout_constraintTop_toBottomOf="@+id/textView9" />
+
+    <TextView
+        android:id="@id/textView11"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/merriweathersans_regular"
+        android:text=""
+        android:textColor="#707B81"
+        android:textSize="12sp"
+        android:layout_marginBottom="15dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

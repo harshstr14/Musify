@@ -135,7 +135,7 @@ class Playlist : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        apiUrl = requireContext().getString(R.string.API)
+        apiUrl = BuildConfig.API_BASE_URL
 
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference().child("Users")
@@ -268,7 +268,7 @@ class Playlist : Fragment() {
 
                 val imageArray = song.optJSONArray("image")
                 val imageUrl = if (imageArray != null && imageArray.length() > 0) {
-                    imageArray.getJSONObject(1).optString("url")
+                    imageArray.getJSONObject(2).optString("url")
 
                 } else ""
 

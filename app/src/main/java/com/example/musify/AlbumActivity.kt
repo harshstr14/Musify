@@ -5,7 +5,6 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.res.Configuration
-import android.graphics.PorterDuff
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -167,7 +166,7 @@ class AlbumActivity : AppCompatActivity() {
 
         setStatusBarIconsTheme(this)
 
-        apiUrl = getString(R.string.API)
+        apiUrl = BuildConfig.API_BASE_URL
 
         binding.progressBar.fadeIn()
         binding.scrollView.fadeOut()
@@ -353,7 +352,7 @@ class AlbumActivity : AppCompatActivity() {
                                 id = artistsObject?.optString("id") ?: "",
                                 name = artistsObject?.optString("name") ?: "",
                                 role = artistsObject?.optString("role") ?: "",
-                                image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
+                                image = artistsImage?.optJSONObject(2)?.optString("url") ?: "",
                                 type = artistsObject?.optString("type") ?: ""
                             )
                         )

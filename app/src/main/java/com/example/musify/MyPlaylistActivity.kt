@@ -176,7 +176,7 @@ class MyPlaylistActivity : AppCompatActivity() {
 
         setStatusBarIconsTheme(this)
 
-        apiUrl = getString(R.string.API)
+        apiUrl = BuildConfig.API_BASE_URL
 
         binding.progressBar.fadeIn()
         binding.scrollView.fadeOut()
@@ -281,6 +281,9 @@ class MyPlaylistActivity : AppCompatActivity() {
                                     else -> mutableListOf()
                                 }
 
+                                if (position !in songsList.indices) {
+                                    return Transaction.abort()
+                                }
                                 songsList.removeAt(position)
 
                                 songsNode.value = songsList
@@ -295,10 +298,12 @@ class MyPlaylistActivity : AppCompatActivity() {
                             override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
                                 when {
                                     error != null -> {
+                                        songAdapter.notifyItemChanged(position)
                                         Toast.makeText(this@MyPlaylistActivity, "Error: ${error.message}", Toast.LENGTH_SHORT).show()
                                     }
                                     !committed -> {
-                                        Toast.makeText(this@MyPlaylistActivity, "Song not found in $name", Toast.LENGTH_SHORT).show()
+                                        songAdapter.notifyItemChanged(position)
+                                        Toast.makeText(this@MyPlaylistActivity, "Failed to remove", Toast.LENGTH_SHORT).show()
                                     }
                                     else -> {
                                         songList.removeAt(position)

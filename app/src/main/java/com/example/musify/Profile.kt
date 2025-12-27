@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.CountDownTimer
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
@@ -25,6 +26,7 @@ import com.cloudinary.android.callback.ErrorInfo
 import com.cloudinary.android.callback.UploadCallback
 import com.example.musify.databinding.FragmentProfileBinding
 import com.example.musify.service.MusicPlayerService
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
@@ -107,7 +109,7 @@ class Profile : Fragment() {
                 nameEditText.requestFocus()
 
                 // Change button text
-                binding.editProfileButton.text = "Save"
+                "Save".also { binding.editProfileButton.text = it }
                 isEditing = true
             } else {
                 // Save name to Firebase
@@ -122,7 +124,7 @@ class Profile : Fragment() {
                             nameEditText.isFocusable = false
 
                             // Change button text back
-                            binding.editProfileButton.text = "Edit Profile"
+                            "Edit Profile".also { binding.editProfileButton.text = it }
                             isEditing = false
                         }
                         .addOnFailureListener { e ->
@@ -159,23 +161,40 @@ class Profile : Fragment() {
         }
 
         var selectedGender: String? = null
+        var isUserAction = false
+
+        binding.spinnerGender.setOnTouchListener { view, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    isUserAction = true
+                }
+                MotionEvent.ACTION_UP -> {
+                    view.performClick()
+                }
+            }
+            false
+        }
 
         binding.spinnerGender.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+
             override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
                 selectedGender = parent.getItemAtPosition(position) as String
                 Log.d("Spinner", "Selected gender: $selectedGender")
 
-                if (userID != null && selectedGender != "Gender") {
-                    database.child(userID).child("gender").setValue(selectedGender).addOnSuccessListener {
-                            Log.d("Firebase", "Gender saved: $selectedGender")
-                    }.addOnFailureListener { e ->
-                            Log.e("Firebase", "Failed to save gender", e)
+                if (isUserAction && userID != null && selectedGender != "Gender") {
+                    database.child(userID).child("gender")
+                        .setValue(selectedGender).addOnSuccessListener {
+                                Log.d("Firebase", "Gender saved: $selectedGender")
+                        }.addOnFailureListener {
+                                Log.e("Firebase", "Failed to save gender", it)
+                        }
                     }
+
+                    isUserAction = false
                 }
-            }
 
             override fun onNothingSelected(parent: AdapterView<*>) {
-                selectedGender = null
+                    selectedGender = null
             }
         }
 
@@ -187,7 +206,7 @@ class Profile : Fragment() {
 
         binding.logoutTextView.setOnClickListener {
             val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.logout_dialog,null)
-            val dialog = AlertDialog.Builder(requireContext())
+            val dialog = MaterialAlertDialogBuilder(requireContext())
                 .setView(dialogView)
                 .create()
 
@@ -206,7 +225,7 @@ class Profile : Fragment() {
                 }
 
                 val intent = Intent(requireContext(), SignIn::class.java)
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 startActivity(intent)
                 activity?.finish()
             }
@@ -217,6 +236,15 @@ class Profile : Fragment() {
 
             dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
             dialog.show()
+
+            val width = (requireContext().resources.displayMetrics.widthPixels * 0.85).toInt()
+            dialog.window?.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        binding.gearIcon.setOnClickListener {
+            val intent = Intent(requireContext(), SettingActivity::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            startActivity(intent)
         }
     }
     private fun View.fadeIn(duration: Long = 300) {
@@ -304,7 +332,7 @@ class Profile : Fragment() {
         dotTimer = object : CountDownTimer(Long.MAX_VALUE, 500) {
             override fun onTick(millisUntilFinished: Long) {
                 dots = (dots + 1) % 4
-                progressTextView?.text = "Uploading" + ".".repeat(dots)
+                ("Uploading" + ".".repeat(dots)).also { progressTextView?.text = it }
             }
 
             override fun onFinish() {}

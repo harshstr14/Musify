@@ -151,7 +151,7 @@ class PlaySong : AppCompatActivity() {
 
         handleBottomNavPosition()
 
-        apiUrl = getString(R.string.API)
+        apiUrl = BuildConfig.API_BASE_URL
 
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference().child("Users")
@@ -250,7 +250,7 @@ class PlaySong : AppCompatActivity() {
                         id = artistsObject?.optString("id") ?: "",
                         name = artistsObject?.optString("name") ?: "",
                         role = artistsObject?.optString("role") ?: "",
-                        image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
+                        image = artistsImage?.optJSONObject(2)?.optString("url") ?: "",
                         type = artistsObject?.optString("type") ?: ""
                     )
                 )

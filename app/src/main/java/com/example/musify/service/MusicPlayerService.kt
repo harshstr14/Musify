@@ -45,7 +45,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MusicPlayerService : LifecycleService() {
+class  MusicPlayerService : LifecycleService() {
     companion object {
         const val CHANNEL_ID = "music_player_channel"
         const val NOTIFICATION_ID = 1
@@ -79,6 +79,7 @@ class MusicPlayerService : LifecycleService() {
     val repeatMode = MutableLiveData(false)
     private var currentAlbumArt: Bitmap? = null
     private var currentArtSongId: String? = null
+    var qualityIndex = 4
 
     private val progressRunnable = object : Runnable {
         override fun run() {
@@ -298,7 +299,7 @@ class MusicPlayerService : LifecycleService() {
 
         player.stop()
         player.clearMediaItems()
-        val mediaItem = MediaItem.fromUri(song.downloadUrl[4].url.toUri())
+        val mediaItem = MediaItem.fromUri(song.downloadUrl[qualityIndex].url.toUri())
         player.setMediaItem(mediaItem)
         player.prepare()
         player.play()

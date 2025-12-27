@@ -166,7 +166,7 @@ class PlaylistActivity : AppCompatActivity() {
 
         setStatusBarIconsTheme(this)
 
-        apiUrl = getString(R.string.API)
+        apiUrl = BuildConfig.API_BASE_URL
 
         binding.progressBar.fadeIn()
         binding.scrollView.fadeOut()
@@ -281,7 +281,7 @@ class PlaylistActivity : AppCompatActivity() {
                         id = artistsObject?.optString("id") ?: "",
                         name = artistsObject?.optString("name") ?: "",
                         role = artistsObject?.optString("role") ?: "",
-                        image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
+                        image = artistsImage?.optJSONObject(2)?.optString("url") ?: "",
                         type = artistsObject?.optString("type") ?: ""
                     )
                 )

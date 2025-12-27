@@ -2,8 +2,10 @@ package com.example.musify
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -29,9 +31,13 @@ import com.example.musify.songData.Artists
 import com.example.musify.songData.Download
 import com.example.musify.songData.Image
 import com.facebook.shimmer.ShimmerFrameLayout
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.remoteconfig.remoteConfig
+import com.google.firebase.remoteconfig.remoteConfigSettings
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.squareup.picasso.Picasso
@@ -83,7 +89,7 @@ class Home : Fragment() {
 
     object RecentlyPlayedManager {
         fun addToRecentlyPlayed(context: Context,song: SongItem,maxSize: Int = 20) {
-            val pref = context.getSharedPreferences("MusifyPref", Context.MODE_PRIVATE)
+            val pref = context.getSharedPreferences("MusifyPref", MODE_PRIVATE)
             val gson = Gson()
             val json = pref.getString("recently_played",null)
 
@@ -104,7 +110,7 @@ class Home : Fragment() {
             pref.edit { putString("recently_played", gson.toJson(recentList)) }
         }
         fun getRecentPlayed(context: Context): ArrayList<SongItem> {
-            val pref = context.getSharedPreferences("MusifyPref", Context.MODE_PRIVATE)
+            val pref = context.getSharedPreferences("MusifyPref", MODE_PRIVATE)
             val json = pref.getString("recently_played", null)
             return if (json != null) {
                 val type = object : TypeToken<ArrayList<SongItem>>() {}.type
@@ -188,7 +194,9 @@ class Home : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        apiUrl = requireContext().getString(R.string.API)
+        apiUrl = BuildConfig.API_BASE_URL
+
+        showDialogOncePerLaunch()
 
         shimmerFrameLayout = binding.shimmerFrameLayout
 
@@ -204,6 +212,13 @@ class Home : Fragment() {
 
         if (userID != null) {
             database.child(userID).get().addOnSuccessListener {
+                val quality = it.child("quality").value.toString()
+                if (quality == "96kbps") {
+                    musicPlayerService?.qualityIndex = 2
+                } else if (quality == "160kbps") {
+                    musicPlayerService?.qualityIndex = 3
+                }
+                Log.d("Quality", quality)
                 val imageUrl = it.child("photoUrl").value.toString()
 
                 Picasso.get().load(imageUrl).into(binding.profileImage)
@@ -577,7 +592,7 @@ class Home : Fragment() {
                             id = artistsObject?.optString("id") ?: "",
                             name = artistsObject?.optString("name") ?: "",
                             role = artistsObject?.optString("role") ?: "",
-                            image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
+                            image = artistsImage?.optJSONObject(2)?.optString("url") ?: "",
                             type = artistsObject?.optString("type") ?: ""
                         )
                     )
@@ -653,7 +668,7 @@ class Home : Fragment() {
                             id = artistsObject?.optString("id") ?: "",
                             name = artistsObject?.optString("name") ?: "",
                             role = artistsObject?.optString("role") ?: "",
-                            image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
+                            image = artistsImage?.optJSONObject(2)?.optString("url") ?: "",
                             type = artistsObject?.optString("type") ?: ""
                         )
                     )
@@ -691,7 +706,7 @@ class Home : Fragment() {
 
                 val imageArray = artistObject.optJSONArray("image")
                 val imageUrl = if (imageArray != null && imageArray.length() > 0) {
-                    imageArray.getJSONObject(1).optString("url")
+                    imageArray.getJSONObject(2).optString("url")
 
                 } else ""
 
@@ -726,7 +741,7 @@ class Home : Fragment() {
 
                 val imageArray = song.optJSONArray("image")
                 val imageUrl = if (imageArray != null && imageArray.length() > 0) {
-                    imageArray.getJSONObject(1).optString("url")
+                    imageArray.getJSONObject(2).optString("url")
 
                 } else ""
 
@@ -767,7 +782,7 @@ class Home : Fragment() {
 
                 val imageArray = song.optJSONArray("image")
                 val imageUrl = if (imageArray != null && imageArray.length() > 0) {
-                    imageArray.getJSONObject(1).optString("url")
+                    imageArray.getJSONObject(2).optString("url")
 
                 } else ""
 
@@ -826,6 +841,90 @@ class Home : Fragment() {
             in 12..16 -> "Good Afternoon"
             in 17..20 -> "Good Evening"
             else -> "Good Night"
+        }
+    }
+    private fun checkForUpdate(context: Context) {
+        val remoteConfig = Firebase.remoteConfig
+        val configSettings = remoteConfigSettings {
+            minimumFetchIntervalInSeconds = 0
+        }
+        remoteConfig.setConfigSettingsAsync(configSettings)
+        remoteConfig.setDefaultsAsync(R.xml.remote_config_defaults)
+
+        remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val latestVersion = remoteConfig.getString("latest_version")
+                val message = remoteConfig.getString("update_message")
+
+                val currentVersion = getCurrentVersion(context)
+
+                if (isNewVersionAvailable(currentVersion, latestVersion)) {
+                    showDialog(context,message,latestVersion, currentVersion)
+                }
+            }
+        }
+    }
+    private fun isNewVersionAvailable(current: String, latest: String): Boolean {
+        val currentParts = current.split(".")
+        val latestParts = latest.split(".")
+
+        for (i in 0 until maxOf(currentParts.size, latestParts.size)) {
+            val c = currentParts.getOrNull(i)?.toIntOrNull() ?: 0
+            val l = latestParts.getOrNull(i)?.toIntOrNull() ?: 0
+            if (l > c) return true
+            if (l < c) return false
+        }
+        return false
+    }
+    private fun getCurrentVersion(context: Context): String {
+        return try {
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(
+                    context.packageName,
+                    PackageManager.PackageInfoFlags.of(0)
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0)
+            }
+            packageInfo.versionName ?: "1.0.0"
+        } catch (e: Exception) {
+            "1.0.0"
+        }
+    }
+    private fun showDialog(context: Context,title: String, latestVersion: String, currentVersion: String) {
+        val dialogView = LayoutInflater.from(context).inflate(R.layout.update_dialog,null)
+        val dialog = MaterialAlertDialogBuilder(context)
+            .setView(dialogView)
+            .create()
+
+        dialogView.findViewById<TextView>(R.id.textView).text = title
+        "Version $currentVersion - $latestVersion".also { dialogView.findViewById<TextView>(R.id.textView20).text = it }
+
+        dialogView.findViewById<TextView>(R.id.btnUpdate).setOnClickListener {
+
+        }
+
+        dialogView.findViewById<TextView>(R.id.btnLater).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.show()
+
+        val width = (context.resources.displayMetrics.widthPixels * 0.85).toInt()
+        dialog.window?.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+    }
+    private fun showDialogOncePerLaunch() {
+        val prefs = requireContext()
+            .getSharedPreferences(AppConstants.PREF_NAME, MODE_PRIVATE)
+
+        val alreadyShown =
+            prefs.getBoolean(AppConstants.KEY_DIALOG_SHOWN, false)
+
+        if (!alreadyShown) {
+            checkForUpdate(requireContext())
+            prefs.edit { putBoolean(AppConstants.KEY_DIALOG_SHOWN, true) }
         }
     }
 }

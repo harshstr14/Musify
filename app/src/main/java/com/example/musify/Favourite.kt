@@ -172,7 +172,7 @@ class Favourite : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        apiUrl = requireContext().getString(R.string.API)
+        apiUrl = BuildConfig.API_BASE_URL
 
         miniPlayer = view.findViewById(R.id.miniPlayer)
         songName = view.findViewById(R.id.songNameText)
@@ -230,10 +230,9 @@ class Favourite : Fragment() {
         auth = FirebaseAuth.getInstance()
         val userID = auth.currentUser?.uid
 
-        database = FirebaseDatabase.getInstance().getReference().child("Users").child(userID!!).child("Favourites")
+        database = FirebaseDatabase.getInstance().getReference().child("Users").child(userID!!)
 
-        val favRef = FirebaseDatabase.getInstance().getReference().child("Users").child(userID).child("Favourites")
-            .child("Songs")
+        val favRef = database.child("Favourites").child("Songs")
 
         songAdapter = SuggestionSongAdapter(songList) { song ->
             val index = songList.indexOfFirst { it.id == song.id }
@@ -335,7 +334,14 @@ class Favourite : Fragment() {
             }
         })
 
-        loadFavouriteData()
+        //loadFavouriteData()
+        loadFavouriteSongs(userID)
+
+        loadFavouriteArtists(userID)
+
+        loadFavouriteAlbums(userID)
+
+        loadFavouritePlaylists(userID)
     }
     private fun fetchSongsByIDs(songIDs: List<String>) {
         viewLifecycleOwner.lifecycleScope.launch {
@@ -772,34 +778,7 @@ class Favourite : Fragment() {
             }
             .start()
     }
-    private fun loadFavouriteData() {
-        val userID = auth.currentUser?.uid
-        if (userID != null) {
-            database.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    binding.noFavText.fadeOut()
-                    binding.progressBar.fadeIn()
-                    //updateCategoryVisibility()
 
-                    if (snapshot.exists()) {
-                        loadFavouriteSongs(userID)
-
-                        loadFavouriteArtists(userID)
-
-                        loadFavouriteAlbums(userID)
-
-                        loadFavouritePlaylists(userID)
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("FAV", "Error loading favourites", error.toException())
-                    binding.noFavText.fadeIn()
-                    binding.progressBar.fadeOut()
-                }
-            })
-        }
-    }
     private fun loadFavouriteSongs(userID: String) {
         val songsReference = FirebaseDatabase.getInstance().getReference().child("Users").child(userID).child("Favourites")
             .child("Songs")
@@ -816,6 +795,8 @@ class Favourite : Fragment() {
             } else {
                 onDataLoaded("songs")
             }
+        }.addOnFailureListener {
+            onDataLoaded("songs")
         }
     }
     private fun loadFavouriteArtists(userID: String) {
@@ -835,6 +816,8 @@ class Favourite : Fragment() {
             } else {
                 onDataLoaded("artists")
             }
+        }.addOnFailureListener {
+            onDataLoaded("artists")
         }
     }
     private fun loadFavouriteAlbums(userID: String) {
@@ -854,6 +837,8 @@ class Favourite : Fragment() {
             } else {
                 onDataLoaded("albums")
             }
+        }.addOnFailureListener {
+            onDataLoaded("albums")
         }
     }
     private fun loadFavouritePlaylists(userID: String) {
@@ -873,6 +858,8 @@ class Favourite : Fragment() {
             } else {
                 onDataLoaded("playlists")
             }
+        }.addOnFailureListener {
+            onDataLoaded("playlists")
         }
     }
 }

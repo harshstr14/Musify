@@ -24,7 +24,7 @@ class SongAdapter(private val songList: List<SongItem>): RecyclerView.Adapter<So
     }
 
     override fun onBindViewHolder(holder: SongViewHolder, position: Int) {
-        Picasso.get().load(songList[position].image[1].url).into(holder.image)
+        Picasso.get().load(songList[position].image[2].url).into(holder.image)
         val artistsName = songList[position].artist
             .takeIf { it.isNotEmpty() }     // only proceed if list not empty
             ?.joinToString(", ") { it.name } // join all artist names

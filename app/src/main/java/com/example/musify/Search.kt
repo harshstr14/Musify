@@ -205,7 +205,7 @@ class Search : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        apiUrl = requireContext().getString(R.string.API)
+        apiUrl = BuildConfig.API_BASE_URL
 
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference().child("Users")

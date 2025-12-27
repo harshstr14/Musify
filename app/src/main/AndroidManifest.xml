@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
         android:name=".MyApp"
@@ -19,6 +19,9 @@
         android:roundIcon="@mipmap/logo_icon_round"
         android:supportsRtl="true"
         android:theme="@style/Base.Theme.Musify.Splash">
+        <activity
+            android:name=".SettingActivity"
+            android:exported="false" />
         <activity
             android:name=".MyPlaylistActivity"
             android:exported="false" />
@@ -41,7 +44,8 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback|dataSync" />
 
-        <receiver android:name=".service.NotificationActionReceiver"
+        <receiver
+            android:name=".service.NotificationActionReceiver"
             android:exported="false" />
 
         <activity

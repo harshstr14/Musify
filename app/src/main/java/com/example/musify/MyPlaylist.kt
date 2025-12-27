@@ -1,6 +1,6 @@
 package com.example.musify
 
-import android.app.AlertDialog
+import androidx.appcompat.app.AlertDialog
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -31,6 +31,7 @@ import com.example.musify.service.MusicPlayerService
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -151,7 +152,7 @@ class MyPlaylist : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        apiUrl = requireContext().getString(R.string.Spotify_Url)
+        apiUrl = BuildConfig.SPOTIFY_API_BASE_URL
 
         miniPlayer = view.findViewById(R.id.miniPlayer)
         songName = view.findViewById(R.id.songNameText)
@@ -597,7 +598,7 @@ class MyPlaylist : Fragment() {
     }
     private fun removePlaylist(item: PlaylistData) {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.custom_dialog,null)
-        val dialog = AlertDialog.Builder(requireContext())
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
             .create()
 
@@ -622,6 +623,9 @@ class MyPlaylist : Fragment() {
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         dialog.show()
+
+        val width = (requireContext().resources.displayMetrics.widthPixels * 0.85).toInt()
+        dialog.window?.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
     }
 
     override fun onResume() {
@@ -633,14 +637,20 @@ class MyPlaylist : Fragment() {
         val dialogView = layoutInflater.inflate(R.layout.import_progress, null)
         progressTextView = dialogView.findViewById(R.id.progressText)
 
-        val builder = AlertDialog.Builder(requireContext())
-        builder.setView(dialogView)
-        builder.setCancelable(false)
+        val progressDialog = MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogView)
+            .setCancelable(false)
+            .create()
 
-        progressDialog = builder.create()
-        progressDialog?.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
-        progressDialog?.show()
+        progressDialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+        progressDialog.show()
+
         startDotAnimation()
+
+        val width = (requireContext().resources.displayMetrics.widthPixels * 0.85).toInt()
+        progressDialog.window?.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        this.progressDialog = progressDialog
     }
     private fun startDotAnimation() {
         var dots = 0
@@ -648,7 +658,7 @@ class MyPlaylist : Fragment() {
         dotTimer = object : CountDownTimer(Long.MAX_VALUE, 500) {
             override fun onTick(millisUntilFinished: Long) {
                 dots = (dots + 1) % 4
-                progressTextView?.text = "Importing" + ".".repeat(dots)
+                ("Importing" + ".".repeat(dots)).also { progressTextView?.text = it }
             }
 
             override fun onFinish() {}

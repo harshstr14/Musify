@@ -43,10 +43,16 @@ class SuggestionSongAdapter(private val songList: MutableList<SongItem>,private 
             holder.favoriteIcon?.setImageResource(R.drawable.heart_outline)
         }
 
+        val song = songList[position]
+
         holder.favoriteIcon?.setOnClickListener {
-            songList[position].isFav = !songList[position].isFav
-            notifyItemChanged(position)
-            onFavouriteClick(songList[position]) // notify fragment
+            song.isFav = !song.isFav
+
+            val pos = holder.bindingAdapterPosition
+            if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
+
+            notifyItemChanged(pos)
+            onFavouriteClick(song)
         }
     }
 

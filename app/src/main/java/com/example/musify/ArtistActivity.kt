@@ -168,7 +168,7 @@ class ArtistActivity : AppCompatActivity() {
 
         setStatusBarIconsTheme(this)
 
-        apiUrl = getString(R.string.API)
+        apiUrl = BuildConfig.API_BASE_URL
 
         binding.progressBar.fadeIn()
         binding.scrollView2.fadeOut()
@@ -330,7 +330,7 @@ class ArtistActivity : AppCompatActivity() {
                                 id = artistsObject?.optString("id") ?: "",
                                 name = artistsObject?.optString("name") ?: "",
                                 role = artistsObject?.optString("role") ?: "",
-                                image = artistsImage?.optJSONObject(1)?.optString("url") ?: "",
+                                image = artistsImage?.optJSONObject(2)?.optString("url") ?: "",
                                 type = artistsObject?.optString("type") ?: ""
                             )
                         )
@@ -350,7 +350,7 @@ class ArtistActivity : AppCompatActivity() {
 
                     val imageArray = songObject.optJSONArray("image")
                     val imageUrl = if (imageArray != null && imageArray.length() > 0) {
-                        imageArray.getJSONObject(1).optString("url")
+                        imageArray.getJSONObject(2).optString("url")
                     } else ""
 
                     val artistsObj = songObject.optJSONObject("artists")
@@ -373,7 +373,7 @@ class ArtistActivity : AppCompatActivity() {
 
                     val imageArray = songObject.optJSONArray("image")
                     val imageUrl = if (imageArray != null && imageArray.length() > 0) {
-                        imageArray.getJSONObject(1).optString("url")
+                        imageArray.getJSONObject(2).optString("url")
                     } else ""
 
                     val artistsObj = songObject.optJSONObject("artists")

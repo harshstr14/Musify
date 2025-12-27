@@ -1,3 +1,4 @@
+import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -6,6 +7,14 @@ plugins {
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.kotlin.kapt)
 }
+
+val localProps = gradleLocalProperties(rootDir,providers)
+
+val apiUrl = localProps.getProperty("API_BASE_URL")
+    ?: error("API_URL missing in local.properties")
+
+val spotifyApiUrl = localProps.getProperty("SPOTIFY_API_BASE_URL")
+    ?: error("SPOTIFY_API_URL missing in local.properties")
 
 android {
     namespace = "com.example.musify"
@@ -19,6 +28,10 @@ android {
         versionName = "2.251"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "API_BASE_URL", "\"$apiUrl\"")
+
+        buildConfigField("String", "SPOTIFY_API_BASE_URL", "\"$spotifyApiUrl\"")
     }
 
     buildTypes {
@@ -32,6 +45,7 @@ android {
         }
     }
     buildFeatures {
+        buildConfig = true
         viewBinding = true
     }
     compileOptions {
@@ -48,6 +62,8 @@ android {
 
 dependencies {
 
+    implementation(libs.firebase.config)
+    implementation(libs.firebase.analytics)
     implementation(libs.gson)
     implementation(libs.cloudinary.android)
     implementation(libs.shimmer)

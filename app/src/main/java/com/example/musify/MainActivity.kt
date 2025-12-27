@@ -16,7 +16,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updateLayoutParams
+import com.example.musify.AppConstants.KEY_DIALOG_SHOWN
+import com.example.musify.AppConstants.PREF_NAME
 import com.example.musify.databinding.ActivityMainBinding
+import androidx.core.content.edit
 
 class MainActivity : AppCompatActivity() {
     private var googleSignInManager: GoogleSignInManager ?= null
@@ -27,6 +30,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(binding.root)
+
+        val prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE)
+        prefs.edit { putBoolean(KEY_DIALOG_SHOWN, false) }
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 

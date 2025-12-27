@@ -29,6 +29,17 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/gearIcon"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="26dp"
+            app:tint="#F8F9FA"
+            app:srcCompat="@drawable/gear_logo"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/textView13"
+            app:layout_constraintBottom_toBottomOf="@id/textView13"/>
+
         <ProgressBar
             android:id="@+id/progressBar"
             android:layout_width="50dp"

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Center circle -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#F8F9FA"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12,15
+                          C13.6569,15 15,13.6569 15,12
+                          C15,10.3431 13.6569,9 12,9
+                          C10.3431,9 9,10.3431 9,12
+                          C9,13.6569 10.3431,15 12,15 Z"/>
+
+    <!-- Gear outline -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#F8F9FA"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M2,12.8794
+                          V11.1194
+                          C2,10.0794 2.85,9.2194 3.9,9.2194
+                          C5.71,9.2194 6.45,7.9394 5.54,6.3694
+                          C5.02,5.4694 5.33,4.2994 6.24,3.7794
+                          L7.97,2.7894
+                          C8.76,2.3194 9.78,2.5994 10.25,3.3894
+                          L10.36,3.5794
+                          C11.26,5.1494 12.74,5.1494 13.65,3.5794
+                          L13.76,3.3894
+                          C14.23,2.5994 15.25,2.3194 16.04,2.7894
+                          L17.77,3.7794
+                          C18.68,4.2994 18.99,5.4694 18.47,6.3694
+                          C17.56,7.9394 18.3,9.2194 20.11,9.2194
+                          C21.15,9.2194 22.01,10.0694 22.01,11.1194
+                          V12.8794
+                          C22.01,13.9194 21.16,14.7794 20.11,14.7794
+                          C18.3,14.7794 17.56,16.0594 18.47,17.6294
+                          C18.99,18.5394 18.68,19.6994 17.77,20.2194
+                          L16.04,21.2094
+                          C15.25,21.6794 14.23,21.3994 13.76,20.6094
+                          L13.65,20.4194
+                          C12.75,18.8494 11.27,18.8494 10.36,20.4194
+                          L10.25,20.6094
+                          C9.78,21.3994 8.76,21.6794 7.97,21.2094
+                          L6.24,20.2194
+                          C5.33,19.6994 5.02,18.5294 5.54,17.6294
+                          C6.45,16.0594 5.71,14.7794 3.9,14.7794
+                          C2.85,14.7794 2,13.9194 2,12.8794 Z"/>
+</vector>
+
