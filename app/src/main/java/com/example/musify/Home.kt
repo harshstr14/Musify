@@ -20,6 +20,7 @@ import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
@@ -855,11 +856,12 @@ class Home : Fragment() {
             if (task.isSuccessful) {
                 val latestVersion = remoteConfig.getString("latest_version")
                 val message = remoteConfig.getString("update_message")
+                val downloadUrl = remoteConfig.getString("download_url")
 
                 val currentVersion = getCurrentVersion(context)
 
                 if (isNewVersionAvailable(currentVersion, latestVersion)) {
-                    showDialog(context,message,latestVersion, currentVersion)
+                    showDialog(context,message,latestVersion, currentVersion,downloadUrl)
                 }
             }
         }
@@ -892,7 +894,7 @@ class Home : Fragment() {
             "1.0.0"
         }
     }
-    private fun showDialog(context: Context,title: String, latestVersion: String, currentVersion: String) {
+    private fun showDialog(context: Context,title: String, latestVersion: String, currentVersion: String, downloadUrl: String) {
         val dialogView = LayoutInflater.from(context).inflate(R.layout.update_dialog,null)
         val dialog = MaterialAlertDialogBuilder(context)
             .setView(dialogView)
@@ -902,7 +904,8 @@ class Home : Fragment() {
         "Version $currentVersion - $latestVersion".also { dialogView.findViewById<TextView>(R.id.textView20).text = it }
 
         dialogView.findViewById<TextView>(R.id.btnUpdate).setOnClickListener {
-
+            val intent = Intent(Intent.ACTION_VIEW, downloadUrl.toUri())
+            startActivity(intent)
         }
 
         dialogView.findViewById<TextView>(R.id.btnLater).setOnClickListener {

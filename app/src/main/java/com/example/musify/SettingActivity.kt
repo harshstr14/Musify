@@ -347,11 +347,12 @@ class SettingActivity : AppCompatActivity() {
             if (task.isSuccessful) {
                 val latestVersion = remoteConfig.getString("latest_version")
                 val message = remoteConfig.getString("update_message")
+                val downloadUrl = remoteConfig.getString("download_url")
 
                 val currentVersion = getCurrentVersion(context)
 
                 if (isNewVersionAvailable(currentVersion, latestVersion)) {
-                    showDialog(context,message,latestVersion, currentVersion)
+                    showDialog(context,message,latestVersion, currentVersion, downloadUrl)
                 } else {
                     Toast.makeText(this,"Update not available", Toast.LENGTH_SHORT).show()
                 }
@@ -390,7 +391,7 @@ class SettingActivity : AppCompatActivity() {
             "1.0.0"
         }
     }
-    private fun showDialog(context: Context,title: String, latestVersion: String, currentVersion: String) {
+    private fun showDialog(context: Context,title: String, latestVersion: String, currentVersion: String, downloadUrl: String) {
         val dialogView = LayoutInflater.from(context).inflate(R.layout.update_dialog,null)
         val dialog = MaterialAlertDialogBuilder(context)
             .setView(dialogView)
@@ -400,7 +401,7 @@ class SettingActivity : AppCompatActivity() {
         "Version : $currentVersion - $latestVersion".also { dialogView.findViewById<TextView>(R.id.textView20).text = it }
 
         dialogView.findViewById<TextView>(R.id.btnUpdate).setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, "https://github.com/harshstr14".toUri())
+            val intent = Intent(Intent.ACTION_VIEW, downloadUrl.toUri())
             startActivity(intent)
         }
 

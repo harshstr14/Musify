@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <defaultsMap>
     <entry>
+        <key>download_url</key>
+        <value>https://github.com/harshstr14/Musify</value>
+    </entry>
+    <entry>
         <key>latest_version</key>
         <value>1.0.0</value>
     </entry>
