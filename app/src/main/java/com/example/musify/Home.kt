@@ -274,6 +274,13 @@ class Home : Fragment() {
             startActivity(intent, options.toBundle())
         }
 
+        binding.swipeRefreshLayout.setColorSchemeResources(
+            R.color.green
+        )
+        binding.swipeRefreshLayout.setProgressBackgroundColorSchemeResource(
+            R.color.dialog_background
+        )
+
         recentPlayedList = RecentlyPlayedManager.getRecentPlayed(requireContext())
         recentPlayedAdapter = SongAdapter(recentPlayedList)
         binding.recentRecyclerView.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL,false)
@@ -306,12 +313,6 @@ class Home : Fragment() {
         topPLayListAdapter = PlayListAdapter(topPlayList)
         binding.recyclerView4.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL,false)
         binding.recyclerView4.adapter = topPLayListAdapter
-
-        fetchPlaylistsByID("6689255","songs",newSongsList,newSongAdapter)
-        fetchPlaylistsByID("946682072","songs",todayTrendingSongList,todayTrendingSongAdapter)
-        fetchArtistsByQuery("top artists","results",artistsList,artistsAdapter)
-        fetchAlbumByQuery("latest","results",topAlbumList,topAlbumAdapter)
-        fetchPlayListByQuery("Top","results",topPlayList,topPLayListAdapter)
 
         recentPlayedAdapter.setOnItemClickListener(object : SongAdapter.OnItemClickListener {
             override fun omItemClick(position: Int) {
@@ -378,6 +379,41 @@ class Home : Fragment() {
                 startActivity(intent)
             }
         })
+
+        loadData()
+
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            binding.swipeRefreshLayout.isRefreshing = true
+            loadData()
+        }
+    }
+    private fun loadData() {
+        completedRequests = 0
+
+        shimmerFrameLayout.startShimmer()
+        shimmerFrameLayout.visibility = View.VISIBLE
+        binding.scrollView.visibility = View.GONE
+
+        refreshRecentlyPlayed()
+
+        // CLEAR OLD DATA
+        newSongsList.clear()
+        todayTrendingSongList.clear()
+        artistsList.clear()
+        topAlbumList.clear()
+        topPlayList.clear()
+
+        newSongAdapter.notifyDataSetChanged()
+        todayTrendingSongAdapter.notifyDataSetChanged()
+        artistsAdapter.notifyDataSetChanged()
+        topAlbumAdapter.notifyDataSetChanged()
+        topPLayListAdapter.notifyDataSetChanged()
+
+        fetchPlaylistsByID("6689255","songs",newSongsList,newSongAdapter)
+        fetchPlaylistsByID("946682072","songs",todayTrendingSongList,todayTrendingSongAdapter)
+        fetchArtistsByQuery("top artists","results",artistsList,artistsAdapter)
+        fetchAlbumByQuery("latest","results",topAlbumList,topAlbumAdapter)
+        fetchPlayListByQuery("Top","results",topPlayList,topPLayListAdapter)
     }
     fun fetchPlaylistsByID(playListId: String,root: String,targetList: MutableList<SongItem>, adapter: SongAdapter) {
         viewLifecycleOwner.lifecycleScope.launch {
@@ -829,6 +865,7 @@ class Home : Fragment() {
         if (completedRequests >= totalRequests) {
             activity?.runOnUiThread {
                 shimmerFrameLayout.stopShimmer()
+                binding.swipeRefreshLayout.isRefreshing = false
                 shimmerFrameLayout.visibility = View.GONE
                 binding.scrollView.visibility = View.VISIBLE
             }
@@ -928,6 +965,22 @@ class Home : Fragment() {
         if (!alreadyShown) {
             checkForUpdate(requireContext())
             prefs.edit { putBoolean(AppConstants.KEY_DIALOG_SHOWN, true) }
+        }
+    }
+    private fun refreshRecentlyPlayed() {
+        recentPlayedList.clear()
+        recentPlayedList.addAll(
+            RecentlyPlayedManager.getRecentPlayed(requireContext())
+        )
+
+        recentPlayedAdapter.notifyDataSetChanged()
+
+        if (recentPlayedList.isNotEmpty()) {
+            binding.textView.visibility = View.VISIBLE
+            binding.recentRecyclerView.visibility = View.VISIBLE
+        } else {
+            binding.textView.visibility = View.GONE
+            binding.recentRecyclerView.visibility = View.GONE
         }
     }
 }

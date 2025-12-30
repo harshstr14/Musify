@@ -25,7 +25,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "2.252"
+        versionName = "2.256"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -62,6 +62,7 @@ android {
 
 dependencies {
 
+    implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.firebase.config)
     implementation(libs.firebase.analytics)
     implementation(libs.gson)

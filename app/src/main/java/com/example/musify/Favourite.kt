@@ -67,6 +67,7 @@ class Favourite : Fragment() {
     private var playlistsLoaded = false
     private var category = "songs"
     private lateinit var apiUrl: String
+    private var isRefreshing = false
     private val okHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -208,6 +209,13 @@ class Favourite : Fragment() {
             startActivity(intent, options.toBundle())
         }
 
+        binding.swipeRefreshLayout.setColorSchemeResources(
+            R.color.green
+        )
+        binding.swipeRefreshLayout.setProgressBackgroundColorSchemeResource(
+            R.color.dialog_background
+        )
+
         binding.progressBar.fadeIn()
         binding.likedSongRecyclerView.fadeOut()
         binding.noFavText.fadeOut()
@@ -335,12 +343,41 @@ class Favourite : Fragment() {
         })
 
         //loadFavouriteData()
+        loadData(userID)
+
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            binding.swipeRefreshLayout.isRefreshing = true
+            isRefreshing = true
+            binding.progressBar.fadeOut()
+            loadData(userID)
+        }
+    }
+    private fun loadData(userID: String) {
+        songsLoaded = false
+        artistsLoaded = false
+        albumsLoaded = false
+        playlistsLoaded = false
+
+        if (isRefreshing) {
+            binding.progressBar.fadeOut()
+        } else {
+            binding.progressBar.fadeIn()
+        }
+
+        // clear old data
+        songList.clear()
+        artistsList.clear()
+        albumsList.clear()
+        playlistsList.clear()
+
+        songAdapter.notifyDataSetChanged()
+        artistsAdapter.notifyDataSetChanged()
+        albumAdapter.notifyDataSetChanged()
+        playListAdapter.notifyDataSetChanged()
+
         loadFavouriteSongs(userID)
-
         loadFavouriteArtists(userID)
-
         loadFavouriteAlbums(userID)
-
         loadFavouritePlaylists(userID)
     }
     private fun fetchSongsByIDs(songIDs: List<String>) {
@@ -678,6 +715,15 @@ class Favourite : Fragment() {
             activity?.runOnUiThread {
                 updateCategoryVisibility()
             }
+        }
+
+        checkRefreshComplete()
+    }
+    private fun checkRefreshComplete() {
+        if (songsLoaded && artistsLoaded && albumsLoaded && playlistsLoaded) {
+            binding.swipeRefreshLayout.isRefreshing = false
+            isRefreshing = false
+            binding.progressBar.fadeOut()
         }
     }
     private fun updateCategoryVisibility() {
