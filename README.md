@@ -39,7 +39,7 @@ Quickly access and manage your favorite tracks in a dedicated liked songs sectio
 Search and find songs, artists, albums, and playlists instantly with fast and responsive search functionality.<br>
 <br>
 
-**<h3 align=center>𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝 𝐟𝐨𝐫 𝐀𝐧𝐝𝐫𝐨𝐢𝐝</h3>**
+# <h3 align=center>𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝 𝐟𝐨𝐫 𝐀𝐧𝐝𝐫𝐨𝐢𝐝</h3>
 <h3 align=center>
 <a href="https://github.com/harshstr14/Musify/releases/download/v2.256/musify.apk">
   <img src="https://res.cloudinary.com/dcdg3s1pf/image/upload/v1767113643/Rounded_20251230_222237_ujpovd.png"
