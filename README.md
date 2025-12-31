@@ -79,4 +79,4 @@ No license specified. All rights reserved.
 
 ## 📬 𝗖𝗼𝗻𝘁𝗮𝗰𝘁/𝗦𝘂𝗽𝗽𝗼𝗿𝘁 𝗜𝗻𝗳𝗼𝗿𝗺𝗮𝘁𝗶𝗼𝗻
 
-For questions or support, please contact: harshstr14@gmail.com
+For questions or support, please contact: harshsuthar9672@gmail.com
