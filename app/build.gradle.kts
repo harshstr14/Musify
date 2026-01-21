@@ -10,7 +10,11 @@ plugins {
 
 val localProps = gradleLocalProperties(rootDir,providers)
 
-val apiUrl = localProps.getProperty("API_BASE_URL")
+val apiUrl1 = localProps.getProperty("API_BASE_URL1")
+    ?: error("API_URL missing in local.properties")
+val apiUrl2 = localProps.getProperty("API_BASE_URL2")
+    ?: error("API_URL missing in local.properties")
+val apiUrl3 = localProps.getProperty("API_BASE_URL3")
     ?: error("API_URL missing in local.properties")
 
 val spotifyApiUrl = localProps.getProperty("SPOTIFY_API_BASE_URL")
@@ -29,7 +33,11 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "API_BASE_URL", "\"$apiUrl\"")
+        buildConfigField("String", "API_BASE_URL1", "\"$apiUrl1\"")
+
+        buildConfigField("String", "API_BASE_URL2", "\"$apiUrl2\"")
+
+        buildConfigField("String", "API_BASE_URL3", "\"$apiUrl3\"")
 
         buildConfigField("String", "SPOTIFY_API_BASE_URL", "\"$spotifyApiUrl\"")
     }

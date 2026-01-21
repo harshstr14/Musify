@@ -34,6 +34,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -66,7 +67,9 @@ class Favourite : Fragment() {
     private var albumsLoaded = false
     private var playlistsLoaded = false
     private var category = "songs"
-    private lateinit var apiUrl: String
+    private lateinit var apiUrl1: String
+    private lateinit var apiUrl2: String
+    private lateinit var apiUrl3: String
     private var isRefreshing = false
     private val okHttpClient by lazy {
         OkHttpClient.Builder()
@@ -148,6 +151,51 @@ class Favourite : Fragment() {
         }
     }
 
+    private suspend fun requestWithFallback(endpoint: String): String =
+        withContext(Dispatchers.IO) {
+
+            val apis = listOf(apiUrl1, apiUrl2, apiUrl3)
+
+            for (baseUrl in apis) {
+                try {
+                    val request = Request.Builder()
+                        .url("$baseUrl$endpoint")
+                        .get()
+                        .build()
+
+                    okHttpClient.newCall(request).execute().use { response ->
+
+                        if (response.isSuccessful) {
+                            return@withContext response.body?.string().orEmpty()
+                        }
+
+                        if (response.code in 500..599) {
+                            Log.w("API", "Server error ${response.code} on $baseUrl, trying next...")
+                            continue
+                        }
+
+                        if (response.code in 400..499) {
+                            throw Exception("Client error ${response.code}")
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    if (
+                        e is java.net.SocketTimeoutException ||
+                        e is java.net.ConnectException ||
+                        e is java.net.UnknownHostException
+                    ) {
+                        Log.w("API", "Network error on $baseUrl, trying next...")
+                        continue
+                    } else {
+                        throw e
+                    }
+                }
+            }
+
+            throw Exception("All APIs timed out")
+        }
+
     override fun onStart() {
         super.onStart()
         if (!bound) {
@@ -173,7 +221,9 @@ class Favourite : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        apiUrl = BuildConfig.API_BASE_URL
+        apiUrl1 = BuildConfig.API_BASE_URL1
+        apiUrl2 = BuildConfig.API_BASE_URL2
+        apiUrl3 = BuildConfig.API_BASE_URL3
 
         miniPlayer = view.findViewById(R.id.miniPlayer)
         songName = view.findViewById(R.id.songNameText)
@@ -382,66 +432,68 @@ class Favourite : Fragment() {
     }
     private fun fetchSongsByIDs(songIDs: List<String>) {
         viewLifecycleOwner.lifecycleScope.launch {
-            val tempList = mutableListOf<SongItem>()
+            // Split the list into initial batch and remaining
+            val initialLoadCount = 15.coerceAtMost(songIDs.size)
+            val firstBatchIDs = songIDs.take(initialLoadCount)
+            val remainingIDs = songIDs.drop(initialLoadCount)
 
             try {
-                withContext(Dispatchers.IO) {
-                    for (songID in songIDs) {
-                        val request = Request.Builder()
-                            .url("$apiUrl/songs/$songID")
-                            .get()
-                            .build()
+                // Load first batch of songs
+                val firstBatch = withContext(Dispatchers.IO) { fetchSongs(firstBatchIDs) }
 
-                        okHttpClient.newCall(request).execute().use { response ->
-                            if (response.isSuccessful) {
-                                val responseBody = response.body.string()
-                                if (responseBody.isNotEmpty()) {
-                                    parseSongJson(responseBody)?.let {
-                                        tempList.add(it)
-                                    }
-                                }
-                            } else {
-                                Log.e("SAAVN", "Error: ${response.code}")
-                            }
-                        }
-                    }
+                songList.clear()
+                songList.addAll(firstBatch)
+                songAdapter.notifyItemRangeInserted(0, firstBatch.size)
+                onDataLoaded("songs")
+
+                // Load remaining songs in the background
+                if (remainingIDs.isNotEmpty()) {
+                    val remainingBatch = withContext(Dispatchers.IO) { fetchSongs(remainingIDs) }
+                    val startIndex = songList.size
+                    songList.addAll(remainingBatch)
+                    songAdapter.notifyItemRangeInserted(startIndex, remainingBatch.size)
                 }
 
-                if (isAdded && view != null) {
-                    binding.likedSongRecyclerView.post {
-                        songList.clear()
-                        songList.addAll(tempList)
-                        songAdapter.notifyDataSetChanged()
+                // Load favourites from Firebase
+                val userID = auth.currentUser?.uid
+                if (userID != null) {
+                    val favSongRef = database.child(userID).child("Favourites").child("Songs")
+                    favSongRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            val favoriteIds = snapshot.children.mapNotNull { it.key }.toSet()
+                            songList.forEach { song -> song.isFav = favoriteIds.contains(song.id) }
+                            songAdapter.notifyDataSetChanged()
+                        }
 
-                        val userID = auth.currentUser?.uid
-                        val favSongRef = FirebaseDatabase.getInstance().getReference().child("Users").child(userID!!).child("Favourites")
-                            .child("Songs")
-
-                        favSongRef.addValueEventListener(object : ValueEventListener {
-                            override fun onDataChange(snapshot: DataSnapshot) {
-                                if (snapshot.exists()) {
-                                    val favoriteIds = snapshot.children.mapNotNull { it.key }.toSet()
-
-                                    songList.forEach { song ->
-                                        song.isFav = favoriteIds.contains(song.id)
-                                    }
-                                    songAdapter.notifyDataSetChanged()
-                                }
-                            }
-
-                            override fun onCancelled(error: DatabaseError) {
-                                Log.e("FAV", "Error loading favourites", error.toException())
-                            }
-                        })
-                        onDataLoaded("songs")
-                    }
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.e("FAV", "Error loading favourites", error.toException())
+                        }
+                    })
+                } else {
+                    Log.e("FAV", "User not logged in")
                 }
 
             } catch (e: Exception) {
-                Log.e("SAAVN", "Exception: ${e.message}")
+                Log.e("SAAVN", "Exception in fetchSongsByIDs", e)
             }
         }
     }
+
+    private fun fetchSongs(ids: List<String>): List<SongItem> {
+        val list = mutableListOf<SongItem>()
+        try {
+            for (songID in ids) {
+                val json = runBlocking {
+                    requestWithFallback("/songs/$songID")
+                }
+                parseSongJson(json)?.let { list.add(it) }
+            }
+        } catch (e: Exception) {
+            Log.e("SAAVN", "Exception fetching songs", e)
+        }
+        return list
+    }
+
     private fun parseSongJson(jsonString: String): SongItem? {
         val json = JSONObject(jsonString)
         val success = json.optBoolean("success",false)
@@ -509,22 +561,11 @@ class Favourite : Fragment() {
             try {
                 withContext(Dispatchers.IO) {
                     for (artistID in artistsID) {
-                        val request = Request.Builder()
-                            .url("$apiUrl/artists/${artistID}")
-                            .get()
-                            .build()
-
-                        val response = okHttpClient.newCall(request).execute()
-                        if (response.isSuccessful) {
-                            val responseBody = response.body.string()
-                            if (responseBody.isNotEmpty()) {
-                                val artistItem = parseArtistJson(responseBody)
-                                if (artistItem != null) {
-                                    tempList.add(artistItem)
-                                }
-                            }
-                        } else {
-                            Log.e("SAAVN", "Error: ${response.code}")
+                        try {
+                            val json = requestWithFallback("/artists/$artistID")
+                            parseArtistJson(json)?.let { tempList.add(it) }
+                        } catch (e: Exception) {
+                            Log.e("API", "Artist failed: $artistID", e)
                         }
                     }
                 }
@@ -568,22 +609,11 @@ class Favourite : Fragment() {
             withContext(Dispatchers.IO) {
                 try {
                     for (albumID in albumsID) {
-                        val request = Request.Builder()
-                            .url("$apiUrl/albums?id=${albumID}")
-                            .get()
-                            .build()
-
-                        val response = okHttpClient.newCall(request).execute()
-                        if (response.isSuccessful) {
-                            val responseBody = response.body.string()
-                            if (responseBody .isNotEmpty()) {
-                                val albumItem = parseAlbumJson(responseBody)
-                                if (albumItem != null) {
-                                    tempList.add(albumItem)
-                                }
-                            }
-                        } else {
-                            Log.e("SAAVN", "Error: ${response.code}")
+                        try {
+                            val json = requestWithFallback("/albums?id=$albumID")
+                            parseAlbumJson(json)?.let { tempList.add(it) }
+                        } catch (e: Exception) {
+                            Log.e("API", "Album failed: $albumID", e)
                         }
                     }
 
@@ -632,22 +662,11 @@ class Favourite : Fragment() {
             withContext(Dispatchers.IO) {
                 try {
                     for (playlistID in playlistsID) {
-                        val request = Request.Builder()
-                            .url("$apiUrl/playlists?id=${playlistID}")
-                            .get()
-                            .build()
-
-                        val response = okHttpClient.newCall(request).execute()
-                        if (response.isSuccessful) {
-                            val responseBody = response.body.string()
-                            if (responseBody .isNotEmpty()) {
-                                val playlistItem = parsePlaylistJson(responseBody)
-                                if (playlistItem != null) {
-                                    tempList.add(playlistItem)
-                                }
-                            }
-                        } else {
-                            Log.e("SAAVN", "Error: ${response.code}")
+                        try {
+                            val json = requestWithFallback("/playlists?id=$playlistID")
+                            parsePlaylistJson(json)?.let { tempList.add(it) }
+                        } catch (e: Exception) {
+                            Log.e("API", "Playlist failed: $playlistID", e)
                         }
                     }
 

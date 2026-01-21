@@ -51,6 +51,7 @@ import com.google.firebase.database.ValueEventListener
 import com.squareup.picasso.Picasso
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -74,7 +75,9 @@ class MyPlaylistActivity : AppCompatActivity() {
     private lateinit var prevButton: AppCompatImageView
     private val songList = ArrayList<SongItem>()
     private lateinit var songAdapter: SuggestionSongAdapter
-    private lateinit var apiUrl: String
+    private lateinit var apiUrl1: String
+    private lateinit var apiUrl2: String
+    private lateinit var apiUrl3: String
     private val okHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -138,6 +141,51 @@ class MyPlaylistActivity : AppCompatActivity() {
         }
     }
 
+    private suspend fun requestWithFallback(endpoint: String): String =
+        withContext(Dispatchers.IO) {
+
+            val apis = listOf(apiUrl1, apiUrl2, apiUrl3)
+
+            for (baseUrl in apis) {
+                try {
+                    val request = Request.Builder()
+                        .url("$baseUrl$endpoint")
+                        .get()
+                        .build()
+
+                    okHttpClient.newCall(request).execute().use { response ->
+
+                        if (response.isSuccessful) {
+                            return@withContext response.body?.string().orEmpty()
+                        }
+
+                        if (response.code in 500..599) {
+                            Log.w("API", "Server error ${response.code} on $baseUrl, trying next...")
+                            continue
+                        }
+
+                        if (response.code in 400..499) {
+                            throw Exception("Client error ${response.code}")
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    if (
+                        e is java.net.SocketTimeoutException ||
+                        e is java.net.ConnectException ||
+                        e is java.net.UnknownHostException
+                    ) {
+                        Log.w("API", "Network error on $baseUrl, trying next...")
+                        continue
+                    } else {
+                        throw e
+                    }
+                }
+            }
+
+            throw Exception("All APIs timed out")
+        }
+
     override fun onStart() {
         super.onStart()
         if (!bound) {
@@ -176,7 +224,9 @@ class MyPlaylistActivity : AppCompatActivity() {
 
         setStatusBarIconsTheme(this)
 
-        apiUrl = BuildConfig.API_BASE_URL
+        apiUrl1 = BuildConfig.API_BASE_URL1
+        apiUrl2 = BuildConfig.API_BASE_URL2
+        apiUrl3 = BuildConfig.API_BASE_URL3
 
         binding.progressBar.fadeIn()
         binding.scrollView.fadeOut()
@@ -510,23 +560,19 @@ class MyPlaylistActivity : AppCompatActivity() {
     private fun updateSongStats() {
         val totalSongs = songList.size
         val totalDuration = songList.sumOf { it.duration }
-        binding.totalSongText.text = "Songs : $totalSongs"
+        "Songs : $totalSongs".also { binding.totalSongText.text = it }
         binding.durationText.text = formatDuration(totalDuration)
     }
     private fun fetchSongs(ids: List<String>): List<SongItem> {
         val list = mutableListOf<SongItem>()
         try {
             for (songID in ids) {
-                val request = Request.Builder()
-                    .url("$apiUrl/songs/$songID")
-                    .get()
-                    .build()
-                val response = okHttpClient.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val responseBody = response.body.string()
-                    val songItem = parseSongJson(responseBody)
-                    if (songItem != null) list.add(songItem)
+                val json = runBlocking {
+                    requestWithFallback("/songs/$songID")
                 }
+
+                val songItem = parseSongJson(json)
+                if (songItem != null) list.add(songItem)
             }
         } catch (e: Exception) {
             Log.e("SAAVN", "Exception fetching songs", e)

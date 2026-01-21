@@ -63,7 +63,9 @@ class AlbumActivity : AppCompatActivity() {
     private lateinit var prevButton: AppCompatImageView
     private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var favouriteIcon: AppCompatImageView
-    private lateinit var apiUrl: String
+    private lateinit var apiUrl1: String
+    private lateinit var apiUrl2: String
+    private lateinit var apiUrl3: String
     private val okHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -128,6 +130,51 @@ class AlbumActivity : AppCompatActivity() {
         }
     }
 
+    private suspend fun requestWithFallback(endpoint: String): String =
+        withContext(Dispatchers.IO) {
+
+            val apis = listOf(apiUrl1, apiUrl2, apiUrl3)
+
+            for (baseUrl in apis) {
+                try {
+                    val request = Request.Builder()
+                        .url("$baseUrl$endpoint")
+                        .get()
+                        .build()
+
+                    okHttpClient.newCall(request).execute().use { response ->
+
+                        if (response.isSuccessful) {
+                            return@withContext response.body?.string().orEmpty()
+                        }
+
+                        if (response.code in 500..599) {
+                            Log.w("API", "Server error ${response.code} on $baseUrl, trying next...")
+                            continue
+                        }
+
+                        if (response.code in 400..499) {
+                            throw Exception("Client error ${response.code}")
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    if (
+                        e is java.net.SocketTimeoutException ||
+                        e is java.net.ConnectException ||
+                        e is java.net.UnknownHostException
+                    ) {
+                        Log.w("API", "Network error on $baseUrl, trying next...")
+                        continue
+                    } else {
+                        throw e
+                    }
+                }
+            }
+
+            throw Exception("All APIs timed out")
+        }
+
     override fun onStart() {
         super.onStart()
         if (!bound) {
@@ -166,7 +213,9 @@ class AlbumActivity : AppCompatActivity() {
 
         setStatusBarIconsTheme(this)
 
-        apiUrl = BuildConfig.API_BASE_URL
+        apiUrl1 = BuildConfig.API_BASE_URL1
+        apiUrl2 = BuildConfig.API_BASE_URL2
+        apiUrl3 = BuildConfig.API_BASE_URL3
 
         binding.progressBar.fadeIn()
         binding.scrollView.fadeOut()
@@ -221,21 +270,7 @@ class AlbumActivity : AppCompatActivity() {
     private fun fetchAlbumByID(albumID: String) {
         lifecycleScope.launch {
             try {
-                val responseBody = withContext(Dispatchers.IO) {
-                    val request = Request.Builder()
-                        .url("$apiUrl/albums?id=${albumID}&limit=30")
-                        .get()
-                        .build()
-
-                    val response = okHttpClient.newCall(request).execute()
-
-                    if (!response.isSuccessful) {
-                        Log.e("SAAVN", "Error: ${response.code}")
-                        throw Exception("Error: ${response.code}")
-                    }
-
-                    response.body.string()
-                }
+                val responseBody = requestWithFallback("/albums?id=${albumID}&limit=30")
 
                 if (responseBody.isEmpty()) {
                     Toast.makeText(this@AlbumActivity, "Empty response", Toast.LENGTH_SHORT).show()

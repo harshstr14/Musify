@@ -78,8 +78,6 @@ class Home : Fragment() {
     private lateinit var prevButton: AppCompatImageView
     private lateinit var shimmerFrameLayout: ShimmerFrameLayout
     private var totalRequests = 5
-    private var completedRequests = 0
-    private lateinit var apiUrl: String
     private val okHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -87,6 +85,10 @@ class Home : Fragment() {
             .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }
+    private var completedRequests = 0
+    private lateinit var apiUrl1: String
+    private lateinit var apiUrl2: String
+    private lateinit var apiUrl3: String
 
     object RecentlyPlayedManager {
         fun addToRecentlyPlayed(context: Context,song: SongItem,maxSize: Int = 20) {
@@ -170,6 +172,51 @@ class Home : Fragment() {
         }
     }
 
+    private suspend fun requestWithFallback(endpoint: String): String =
+        withContext(Dispatchers.IO) {
+
+            val apis = listOf(apiUrl1, apiUrl2, apiUrl3)
+
+            for (baseUrl in apis) {
+                try {
+                    val request = Request.Builder()
+                        .url("$baseUrl$endpoint")
+                        .get()
+                        .build()
+
+                    okHttpClient.newCall(request).execute().use { response ->
+
+                        if (response.isSuccessful) {
+                            return@withContext response.body?.string().orEmpty()
+                        }
+
+                        if (response.code in 500..599) {
+                            Log.w("API", "Server error ${response.code} on $baseUrl, trying next...")
+                            continue
+                        }
+
+                        if (response.code in 400..499) {
+                            throw Exception("Client error ${response.code}")
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    if (
+                        e is java.net.SocketTimeoutException ||
+                        e is java.net.ConnectException ||
+                        e is java.net.UnknownHostException
+                    ) {
+                        Log.w("API", "Network error on $baseUrl, trying next...")
+                        continue
+                    } else {
+                        throw e
+                    }
+                }
+            }
+
+            throw Exception("All APIs timed out")
+        }
+
     override fun onStart() {
         super.onStart()
         if (!bound) {
@@ -194,8 +241,9 @@ class Home : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        apiUrl = BuildConfig.API_BASE_URL
+        apiUrl1 = BuildConfig.API_BASE_URL1
+        apiUrl2 = BuildConfig.API_BASE_URL2
+        apiUrl3 = BuildConfig.API_BASE_URL3
 
         showDialogOncePerLaunch()
 
@@ -418,21 +466,7 @@ class Home : Fragment() {
     fun fetchPlaylistsByID(playListId: String,root: String,targetList: MutableList<SongItem>, adapter: SongAdapter) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val responseBody = withContext(Dispatchers.IO) {
-                    val request = Request.Builder()
-                        .url("$apiUrl/playlists?id=$playListId&limit=40")
-                        .get()
-                        .build()
-
-                    val response = okHttpClient.newCall(request).execute()
-
-                    if (!response.isSuccessful) {
-                        Log.e("SAAVN", "Error: ${response.code}")
-                        throw Exception("Error: ${response.code}")
-                    }
-
-                    response.body.string()
-                }
+                val responseBody = requestWithFallback("/playlists?id=$playListId&limit=40")
 
                 if (responseBody.isEmpty()) {
                     Toast.makeText(requireContext(), "Empty response", Toast.LENGTH_SHORT).show()
@@ -449,21 +483,7 @@ class Home : Fragment() {
     fun fetchPlaylistsByID(playListId: String,root: String,targetList: MutableList<SongItem>, adapter: NewSongAdapter) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val responseBody = withContext(Dispatchers.IO) {
-                    val request = Request.Builder()
-                        .url("$apiUrl/playlists?id=$playListId&limit=40")
-                        .get()
-                        .build()
-
-                    val response = okHttpClient.newCall(request).execute()
-
-                    if (!response.isSuccessful) {
-                        Log.e("SAAVN", "Error: ${response.code}")
-                        throw Exception("Error: ${response.code}")
-                    }
-
-                    response.body.string()
-                }
+                val responseBody = requestWithFallback("/playlists?id=$playListId&limit=40")
 
                 if (responseBody.isEmpty()) {
                     Toast.makeText(requireContext(), "Empty response", Toast.LENGTH_SHORT).show()
@@ -480,21 +500,7 @@ class Home : Fragment() {
     fun fetchAlbumByQuery(query: String, root: String, targetList: MutableList<DataItem>, adapter: AlbumAdapter) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val responseBody = withContext(Dispatchers.IO) {
-                    val request = Request.Builder()
-                        .url("$apiUrl/search/albums?query=${query}&limit=30")
-                        .get()
-                        .build()
-
-                    val response = okHttpClient.newCall(request).execute()
-
-                    if (!response.isSuccessful) {
-                        Log.e("SAAVN", "Error: ${response.code}")
-                        throw Exception("Error: ${response.code}")
-                    }
-
-                    response.body.string()
-                }
+                val responseBody = requestWithFallback("/search/albums?query=${query}&limit=30")
 
                 if (responseBody.isEmpty()) {
                     Toast.makeText(requireContext(), "Empty response", Toast.LENGTH_SHORT).show()
@@ -511,21 +517,7 @@ class Home : Fragment() {
     fun fetchArtistsByQuery(query: String, root: String, targetList: MutableList<Artists>, adapter: ArtistsAdapter) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val responseBody = withContext(Dispatchers.IO) {
-                    val request = Request.Builder()
-                        .url("$apiUrl/search/artists?query=${query}&limit=20")
-                        .get()
-                        .build()
-
-                    val response = okHttpClient.newCall(request).execute()
-
-                    if (!response.isSuccessful) {
-                        Log.e("SAAVN", "Error: ${response.code}")
-                        throw Exception("Error: ${response.code}")
-                    }
-
-                    response.body.string()
-                }
+                val responseBody = requestWithFallback("/search/artists?query=${query}&limit=20")
 
                 if (responseBody.isEmpty()) {
                     Toast.makeText(requireContext(), "Empty response", Toast.LENGTH_SHORT).show()
@@ -542,21 +534,7 @@ class Home : Fragment() {
     fun fetchPlayListByQuery(query: String, root: String, targetList: MutableList<DataItem>, adapter: PlayListAdapter) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val responseBody = withContext(Dispatchers.IO) {
-                    val request = Request.Builder()
-                        .url("$apiUrl/search/playlists?query=${query}&limit=20")
-                        .get()
-                        .build()
-
-                    val response = okHttpClient.newCall(request).execute()
-
-                    if (!response.isSuccessful) {
-                        Log.e("SAAVN", "Error: ${response.code}")
-                        throw Exception("Error: ${response.code}")
-                    }
-
-                    response.body.string()
-                }
+                val responseBody = requestWithFallback("/search/playlists?query=${query}&limit=20")
 
                 if (responseBody.isEmpty()) {
                     Toast.makeText(requireContext(), "Empty response", Toast.LENGTH_SHORT).show()
