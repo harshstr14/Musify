@@ -35,6 +35,7 @@ import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -324,7 +325,6 @@ class Favourite : Fragment() {
                                 }
                             }
                             Toast.makeText(requireContext(), "Removed from Favourites", Toast.LENGTH_SHORT).show()
-
                         }
                     }
                     .addOnFailureListener {
@@ -430,16 +430,42 @@ class Favourite : Fragment() {
         loadFavouriteAlbums(userID)
         loadFavouritePlaylists(userID)
     }
+
+    private suspend fun getFavouriteSongIds(): Set<String> =
+        suspendCancellableCoroutine { cont ->
+            val userID = auth.currentUser?.uid
+            if (userID == null) {
+                cont.resume(emptySet()) {}
+                return@suspendCancellableCoroutine
+            }
+
+            database.child("Favourites").child("Songs")
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val favIds = snapshot.children.mapNotNull { it.key }.toSet()
+                        cont.resume(favIds) {}
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        cont.resume(emptySet()) {}
+                    }
+                })
+        }
     private fun fetchSongsByIDs(songIDs: List<String>) {
         viewLifecycleOwner.lifecycleScope.launch {
             // Split the list into initial batch and remaining
-            val initialLoadCount = 15.coerceAtMost(songIDs.size)
+            val initialLoadCount = 10.coerceAtMost(songIDs.size)
             val firstBatchIDs = songIDs.take(initialLoadCount)
             val remainingIDs = songIDs.drop(initialLoadCount)
 
             try {
+                val favouriteIds = getFavouriteSongIds()
                 // Load first batch of songs
                 val firstBatch = withContext(Dispatchers.IO) { fetchSongs(firstBatchIDs) }
+
+                firstBatch.forEach { song ->
+                    song.isFav = favouriteIds.contains(song.id)
+                }
 
                 songList.clear()
                 songList.addAll(firstBatch)
@@ -449,30 +475,15 @@ class Favourite : Fragment() {
                 // Load remaining songs in the background
                 if (remainingIDs.isNotEmpty()) {
                     val remainingBatch = withContext(Dispatchers.IO) { fetchSongs(remainingIDs) }
+
+                    remainingBatch.forEach { song ->
+                        song.isFav = favouriteIds.contains(song.id)
+                    }
+
                     val startIndex = songList.size
                     songList.addAll(remainingBatch)
                     songAdapter.notifyItemRangeInserted(startIndex, remainingBatch.size)
                 }
-
-                // Load favourites from Firebase
-                val userID = auth.currentUser?.uid
-                if (userID != null) {
-                    val favSongRef = database.child(userID).child("Favourites").child("Songs")
-                    favSongRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(snapshot: DataSnapshot) {
-                            val favoriteIds = snapshot.children.mapNotNull { it.key }.toSet()
-                            songList.forEach { song -> song.isFav = favoriteIds.contains(song.id) }
-                            songAdapter.notifyDataSetChanged()
-                        }
-
-                        override fun onCancelled(error: DatabaseError) {
-                            Log.e("FAV", "Error loading favourites", error.toException())
-                        }
-                    })
-                } else {
-                    Log.e("FAV", "User not logged in")
-                }
-
             } catch (e: Exception) {
                 Log.e("SAAVN", "Exception in fetchSongsByIDs", e)
             }

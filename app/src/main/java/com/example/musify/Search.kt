@@ -36,6 +36,8 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -68,6 +70,9 @@ class Search : Fragment() {
     private lateinit var apiUrl1: String
     private lateinit var apiUrl2: String
     private lateinit var apiUrl3: String
+    private var searchJob: Job? = null
+    private val debounceDelay = 500L
+
     private val okHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -447,7 +452,7 @@ class Search : Fragment() {
         binding.customSearchView.setOnQueryTextListener(object : CustomSearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String): Boolean {
                 if (query.isNotBlank()) {
-                    // save the search
+                    searchJob?.cancel()
                     SearchHistoryManager.addSearch(requireContext(), query)
 
                     // hide recent list
@@ -466,6 +471,8 @@ class Search : Fragment() {
             }
 
             override fun onQueryTextChange(newText: String): Boolean {
+                searchJob?.cancel()
+
                 if (newText.isEmpty()) {
                     // show recent search
                     val recentList = SearchHistoryManager.getHistory(requireContext())
@@ -488,12 +495,20 @@ class Search : Fragment() {
                     // clear search results
                     clearAllSearchResults()
                     return true
-                } else {
-                    binding.noRecentText.fadeOut()
-                    binding.searchHistoryRecyclerView.fadeOut()
-                    binding.recentSearchText.fadeOut()
-                    binding.deleteIcon.fadeOut()
+                }
 
+                if (newText.length < 3) {
+                    clearAllSearchResults()
+                    return true
+                }
+
+                binding.noRecentText.fadeOut()
+                binding.searchHistoryRecyclerView.fadeOut()
+                binding.recentSearchText.fadeOut()
+                binding.deleteIcon.fadeOut()
+
+                searchJob = lifecycleScope.launch {
+                    delay(debounceDelay)
                     // show search results
                     fetchSongDataByQuery(newText)
                     fetchArtistsDataByQuery(newText)
