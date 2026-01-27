@@ -41,7 +41,7 @@ Search and find songs, artists, albums, and playlists instantly with fast and re
 
 # <h3 align=center>𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝 𝐟𝐨𝐫 𝐀𝐧𝐝𝐫𝐨𝐢𝐝</h3>
 <h3 align=center>
-<a href="https://github.com/harshstr14/Musify/releases/download/v2.260/musify.apk">
+<a href="https://github.com/harshstr14/Musify/releases/download/v2.262/musify.apk">
   <img src="https://res.cloudinary.com/dcdg3s1pf/image/upload/v1767113643/Rounded_20251230_222237_ujpovd.png"
        width="120"
        height="40" />
