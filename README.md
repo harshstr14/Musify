@@ -13,6 +13,8 @@
 **💡Kotlin-Powered Learning :** Musify is more than just a music app—it serves as a hands-on learning project built with Kotlin and modern Android architecture.
 It demonstrates clean code practices, efficient state management, and seamless UI interactions, showcasing the balance between elegant design and high-performance native Android development.
 
+&nbsp;
+
 # ✨ 𝗙𝗲𝗮𝘁𝘂𝗿𝗲𝘀
 **🚀 Free Music Playback :**
 
@@ -36,8 +38,9 @@ Quickly access and manage your favorite tracks in a dedicated liked songs sectio
 
 **🔎 Instant Music Search :**
 
-Search and find songs, artists, albums, and playlists instantly with fast and responsive search functionality.<br>
-<br>
+Search and find songs, artists, albums, and playlists instantly with fast and responsive search functionality.
+
+&nbsp;
 
 # <h3 align=center>𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝 𝐟𝐨𝐫 𝐀𝐧𝐝𝐫𝐨𝐢𝐝</h3>
 <h3 align=center>
@@ -47,6 +50,7 @@ Search and find songs, artists, albums, and playlists instantly with fast and re
        height="40" />
 </a>
 </h3><br>
+
 
 ## 🚀 𝗜𝗻𝘀𝘁𝗮𝗹𝗹𝗮𝘁𝗶𝗼𝗻
 
@@ -63,6 +67,8 @@ Search and find songs, artists, albums, and playlists instantly with fast and re
 4.  Sync the project with Gradle files.
 5.  Build and run the app on an Android emulator or a physical device (API 26+).
 
+&nbsp;
+
 ## 🤝 𝗖𝗼𝗻𝘁𝗿𝗶𝗯𝘂𝘁𝗶𝗻𝗴 𝗚𝘂𝗶𝗱𝗲𝗹𝗶𝗻𝗲𝘀
 
 Contributions are welcome! To contribute to this project, follow these steps:
@@ -72,6 +78,8 @@ Contributions are welcome! To contribute to this project, follow these steps:
 3.  Make your changes and commit them with descriptive commit messages 📝.
 4.  Test your changes thoroughly ✅.
 5.  Submit a pull request to the `master` branch 🔄.
+
+&nbsp;
 
 ## 📜 𝗟𝗶𝗰𝗲𝗻𝘀𝗲 𝗜𝗻𝗳𝗼𝗿𝗺𝗮𝘁𝗶𝗼𝗻
 
